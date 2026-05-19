@@ -68,12 +68,13 @@ graph-reduce run --graph <path> --algorithm <name> [options]
   - `--output` — write results to a file instead of printing; supports `.json` and `.csv`
   - `--directed` — treat the graph as directed (default: undirected)
   - `--weighted` — treat the third column in the edgelist as edge weights (default: unweighted)
+  - `--plugin` — path to a python file to import before registry discovery; can be repeated to load multiple plugins (see [extending via plugins](#extending-via-plugins))
 
 ### examples
 
 run random sparsification and print results to the terminal:
 ~~~bash
-graph-reduce run --graph my_graph.edgelist --algorithm random --weighted --params p=0.4 seed=42 --metrics diameter,clustering
+graph-reduce run --graph my_graph.edgelist --algorithm random --weighted --params p=0.4 seed=420 --metrics diameter,clustering
 ~~~
 
 pass parameters as a json object and save results to a flat csv for further analysis:
@@ -81,8 +82,44 @@ pass parameters as a json object and save results to a flat csv for further anal
 graph-reduce run --graph my_graph.edgelist --algorithm k_neighbor --weighted --params '{"rho": 0.5}' --metrics edge_density,spectral_similarity --output results.csv
 ~~~
 
+load a custom algorithm from outside the project before running:
+~~~bash
+graph-reduce --plugin ~/research/my_sparsifier.py run --graph my_graph.edgelist --algorithm my-algo --metrics clustering
+~~~
+
 
 ## extensibility
+### extending via plugins
+the `--plugin` flag lets you load any `.py` file before the internal registries are populated, so you can add algorithms, metrics, or transforms without touching the project source.
+
+a plugin file is a plain python module that uses the same registration decorators as the built-in implementations:
+
+~~~python
+# ~/research/my_sparsifier.py
+import networkx as nx
+from src.domain.sparsifiers.registry import register_sparsifier
+from src.domain.sparsifiers.base import Sparsifier
+
+@register_sparsifier("my-algo")
+class MySparsifier(Sparsifier):
+    def reduce(self, g: nx.Graph, **params) -> nx.Graph:
+        ...
+~~~
+
+pass the file as a global flag (before the subcommand) so it applies to every command, including `list-algorithms` and `list-metrics`:
+~~~bash
+# use the algorithm immediately
+graph-reduce --plugin ~/research/my_sparsifier.py run --graph g.edgelist --algorithm my-algo
+
+# confirm it's visible in the registry
+graph-reduce --plugin ~/research/my_sparsifier.py list-algorithms
+
+# load several plugins at once
+graph-reduce --plugin ~/algo.py --plugin ~/metric.py run --graph g.edgelist --algorithm my-algo --metrics my-metric
+~~~
+
+the plugin's parent directory is automatically added to `sys.path`, so any local imports inside the plugin resolve relative to its own location regardless of where `graph-reduce` is invoked from.
+
 ### algorithm agnosticism
 it makes no difference whether the operation is removing edges, merging nodes, or reweighting the entire graph; as long as the algorithm follows the `GraphTransform` interface, it can be plugged into the pipeline without changing a single line of core code.
 

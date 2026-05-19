@@ -11,6 +11,7 @@ from src.interfaces.api import ExperimentFacade
 from src.domain.sparsifiers.registry import SparsifierRegistry
 from src.domain.transforms.registry import TransformRegistry
 from src.domain.metrics.registry import MetricRegistry
+from src.domain.common.plugin_discovery import load_plugin_file
 
 
 def _parse_params(raw: list[str] | None) -> dict:
@@ -131,6 +132,10 @@ def run_cli(argv: list[str] | None = None) -> int:
         prog="graph-reduce",
         description="graph complexity reduction framework",
     )
+    parser.add_argument(
+        "--plugin", metavar="FILE", action="append", default=[],
+        help="load a plugin module before registry discovery (repeatable)",
+    )
     sub = parser.add_subparsers(dest="command")
 
     run_p = sub.add_parser("run", help="run a reduction experiment on a graph file")
@@ -150,6 +155,13 @@ def run_cli(argv: list[str] | None = None) -> int:
     sub.add_parser("smoke", help="run a quick smoke test")
 
     args = parser.parse_args(argv)
+
+    for plugin_path in args.plugin:
+        try:
+            load_plugin_file(plugin_path)
+        except FileNotFoundError as e:
+            print(f"error: {e}", file=sys.stderr)
+            return 1
 
     if args.command == "run":
         return cmd_run(args)
