@@ -3,7 +3,7 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "graph-complexity-reduction-framework"
+name = "dwindle"
 version = "0.1.0"
 description = "a research environment for evaluating graph reduction algorithms"
 readme = "README.md"
@@ -21,7 +21,7 @@ dependencies = [
 dev = ["pytest>=7.0"]
 
 [project.scripts]
-graph-reduce = "src.main:main"
+dwindle = "src.main:main"
 
 [tool.setuptools.packages.find]
 where = ["."]

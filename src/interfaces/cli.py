@@ -129,7 +129,7 @@ def cmd_list_metrics(args) -> int:
 
 def run_cli(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
-        prog="graph-reduce",
+        prog="dwindle",
         description="graph complexity reduction framework",
     )
     parser.add_argument(

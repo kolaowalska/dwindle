@@ -1,4 +1,5 @@
-# graph complexity reduction framework
+# dwindle
+> an evolving research environment for the systematic study of graph reduction methods.
 
 ## overview & purpose
 this project is a panoramic, research-oriented pipeline for evaluating graph reduction algorithms. it's designed to support thesis-level experimentation by allowing the user to compare different algorithms that reduce graph complexity and the ways they influence graph properties in large-scale networks. 
@@ -43,19 +44,19 @@ the program follows a defined lifecycle for every experiment.
 ~~~bash
 pip install -e .
 ~~~
-this makes the `graph-reduce` command available system-wide. a virtual environment is recommended.
+this makes the `dwindle` command available system-wide. a virtual environment is recommended.
 
 ### discovering what's available
 before running an experiment, list the algorithms and metrics the framework is aware of:
 ~~~bash
-graph-reduce list-algorithms
-graph-reduce list-metrics
+dwindle list-algorithms
+dwindle list-metrics
 ~~~
 
 ### using the cli
 to perform an experiment, run the following command:
 ~~~bash
-graph-reduce run --graph <path> --algorithm <name> [options]
+dwindle run --graph <path> --algorithm <name> [options]
 ~~~
 
 **required:**
@@ -74,17 +75,17 @@ graph-reduce run --graph <path> --algorithm <name> [options]
 
 run random sparsification and print results to the terminal:
 ~~~bash
-graph-reduce run --graph my_graph.edgelist --algorithm random --weighted --params p=0.4 seed=420 --metrics diameter,clustering
+dwindle run --graph my_graph.edgelist --algorithm random --weighted --params p=0.4 seed=420 --metrics diameter,clustering
 ~~~
 
 pass parameters as a json object and save results to a flat csv for further analysis:
 ~~~bash
-graph-reduce run --graph my_graph.edgelist --algorithm k_neighbor --weighted --params '{"rho": 0.5}' --metrics edge_density,spectral_similarity --output results.csv
+dwindle run --graph my_graph.edgelist --algorithm k_neighbor --weighted --params '{"rho": 0.5}' --metrics edge_density,spectral_similarity --output results.csv
 ~~~
 
 load a custom algorithm from outside the project before running:
 ~~~bash
-graph-reduce --plugin ~/research/my_sparsifier.py run --graph my_graph.edgelist --algorithm my-algo --metrics clustering
+dwindle --plugin ~/research/my_sparsifier.py run --graph my_graph.edgelist --algorithm my-algo --metrics clustering
 ~~~
 
 
@@ -109,15 +110,14 @@ class MySparsifier(Sparsifier):
 pass the file as a global flag (before the subcommand) so it applies to every command, including `list-algorithms` and `list-metrics`:
 ~~~bash
 # use the algorithm immediately
-graph-reduce --plugin ~/research/my_sparsifier.py run --graph g.edgelist --algorithm my-algo
+dwindle --plugin ~/research/my_sparsifier.py run --graph g.edgelist --algorithm my-algo
 
 # confirm it's visible in the registry
-graph-reduce --plugin ~/research/my_sparsifier.py list-algorithms
+dwindle --plugin ~/research/my_sparsifier.py list-algorithms
 
 # load several plugins at once
-graph-reduce --plugin ~/algo.py --plugin ~/metric.py run --graph g.edgelist --algorithm my-algo --metrics my-metric
+dwindle --plugin ~/algo.py --plugin ~/metric.py run --graph g.edgelist --algorithm my-algo --metrics my-metric
 ~~~
-
 the plugin's parent directory is automatically added to `sys.path`, so any local imports inside the plugin resolve relative to its own location regardless of where `graph-reduce` is invoked from.
 
 ### algorithm agnosticism
