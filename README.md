@@ -41,21 +41,21 @@ the program follows a defined lifecycle for every experiment.
 1. clone or download the repository to your local machine
 2. open the terminal and navigate to the project's root directory
 3. run the following command:
-~~~bash
+~~~shell
 pip install -e .
 ~~~
 this makes the `dwindle` command available system-wide. a virtual environment is recommended.
 
 ### discovering what's available
 before running an experiment, list the algorithms and metrics the framework is aware of:
-~~~bash
+~~~shell
 dwindle list-algorithms
 dwindle list-metrics
 ~~~
 
 ### using the cli
 to perform an experiment, run the following command:
-~~~bash
+~~~shell
 dwindle run --graph <path> --algorithm <name> [options]
 ~~~
 
@@ -74,17 +74,17 @@ dwindle run --graph <path> --algorithm <name> [options]
 ### examples
 
 run random sparsification and print results to the terminal:
-~~~bash
+~~~shell
 dwindle run --graph my_graph.edgelist --algorithm random --weighted --params p=0.4 seed=420 --metrics diameter,clustering
 ~~~
 
 pass parameters as a json object and save results to a flat csv for further analysis:
-~~~bash
+~~~shell
 dwindle run --graph my_graph.edgelist --algorithm k_neighbor --weighted --params '{"rho": 0.5}' --metrics edge_density,spectral_similarity --output results.csv
 ~~~
 
 load a custom algorithm from outside the project before running:
-~~~bash
+~~~shell
 dwindle --plugin ~/research/my_sparsifier.py run --graph my_graph.edgelist --algorithm my-algo --metrics clustering
 ~~~
 
@@ -93,7 +93,7 @@ dwindle --plugin ~/research/my_sparsifier.py run --graph my_graph.edgelist --alg
 
 ### batch benchmarking
 to run one algorithm across an entire directory of graphs and collect results into a single csv:
-~~~bash
+~~~shell
 dwindle batch --dir <directory> --algorithm <name> [options]
 ~~~
 
@@ -114,10 +114,10 @@ the output csv uses a long format with columns: `graph`, `algorithm`, `nodes_bef
 if a graph fails to load or the algorithm errors, that file is skipped with a warning and the rest of the batch continues. the exit code is `2` if any graphs were skipped (useful for scripting).
 
 **example** — benchmark local degree sparsification across a d
-~~~bash
+~~~shell
 dwindle batch --dir datasets/snap/ --algorithm local_degree --_density,clustering,diameter --outputresults/snap_benchmark.csv
 ~~~
-~~~bash
+~~~shell
 # combine with a plugin for a custom algorithm
 dwindle --plugin ~/research/my_algo.py batch --dir datasets/ --algorithm my-algo --metrics spectral_similarity --output my_benchmark.csv
 ~~~
@@ -145,7 +145,7 @@ class MySparsifier(Sparsifier):
 ~~~
 
 pass the file as a global flag (before the subcommand) so it applies to every command, including `list-algorithms` and `list-metrics`:
-~~~bash
+~~~shell
 # use the algorithm immediately
 dwindle --plugin ~/research/my_sparsifier.py run --graph g.edgelist --algorithm my-algo
 
