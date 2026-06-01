@@ -88,6 +88,43 @@ load a custom algorithm from outside the project before running:
 dwindle --plugin ~/research/my_sparsifier.py run --graph my_graph.edgelist --algorithm my-algo --metrics clustering
 ~~~
 
+--- 
+/*TODO*/
+
+### batch benchmarking
+to run one algorithm across an entire directory of graphs and collect results into a single csv:
+~~~bash
+dwindle batch --dir <directory> --algorithm <name> [options]
+~~~
+
+**required:**
+  - `--dir` — directory containing graph files; any file with a recognised extension (`.edgelist`, `.graphml`, `.gexf`, `.gml`, `.adjlist`, `.edges`, `.txt`) is picked up automatically
+  - `--algorithm` — algorithm to apply to every graph in the directory
+
+**optional:**
+  - `--metrics` — comma-separated metrics to compute for each graph
+  - `--params` — algorithm parameters, same syntax as `run`
+  - `--output` — path for the combined csv output (default: `batch_results.csv`)
+  - `--pattern` — glob to narrow which files are processed, e.g. `*.edgelist`
+  - `--recursive` — descend into subdirectories
+  - `--directed` / `--weighted` — applied uniformly to all graphs in the batch
+
+the output csv uses a long format with columns: `graph`, `algorithm`, `nodes_before`, `edges_before`, `nodes_after`, `edges_after`, `metric`, `key`, `value`. each metric key-value pair is its own row, so the file is straightforward to filter and pivot in pandas or a spreadsheet.
+
+if a graph fails to load or the algorithm errors, that file is skipped with a warning and the rest of the batch continues. the exit code is `2` if any graphs were skipped (useful for scripting).
+
+**example** — benchmark local degree sparsification across a d
+~~~bash
+dwindle batch --dir datasets/snap/ --algorithm local_degree --_density,clustering,diameter --outputresults/snap_benchmark.csv
+~~~
+~~~bash
+# combine with a plugin for a custom algorithm
+dwindle --plugin ~/research/my_algo.py batch --dir datasets/ --algorithm my-algo --metrics spectral_similarity --output my_benchmark.csv
+~~~
+
+note: the --plugin flag goes before batch (same as with run), since it's a global flag on the top-level parser.
+
+---
 
 ## extensibility
 ### extending via plugins

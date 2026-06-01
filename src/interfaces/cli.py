@@ -7,6 +7,9 @@ import sys
 from pathlib import Path
 from typing import Optional
 
+_GRAPH_EXTENSIONS = {".graphml", ".gexf", ".gml", ".adjlist", ".edgelist", ".txt", ".edges", ".csv"}
+_BATCH_FIELDNAMES = ["graph", "algorithm", "nodes_before", "edges_before", "nodes_after", "edges_after", "metric", "key", "value"]
+
 from src.interfaces.api import ExperimentFacade
 from src.domain.sparsifiers.registry import SparsifierRegistry
 from src.domain.transforms.registry import TransformRegistry
@@ -127,6 +130,94 @@ def cmd_list_metrics(args) -> int:
     return 0
 
 
+def cmd_batch(args) -> int:
+    graph_dir = Path(args.dir)
+    if not graph_dir.is_dir():
+        print(f"error: '{args.dir}' is not a directory", file=sys.stderr)
+        return 1
+
+    pattern = args.pattern or "*"
+    walker = graph_dir.rglob(pattern) if args.recursive else graph_dir.glob(pattern)
+    files = sorted(
+        p for p in walker
+        if p.is_file() and p.suffix.lower() in _GRAPH_EXTENSIONS
+    )
+
+    if not files:
+        print(f"error: no graph files found in '{args.dir}' (pattern: {pattern})", file=sys.stderr)
+        return 1
+
+    metrics = [m.strip() for m in args.metrics.split(",")] if args.metrics else []
+    try:
+        params = _parse_params(args.params)
+    except ValueError as e:
+        print(f"error: {e}", file=sys.stderr)
+        return 1
+
+    output_path = Path(args.output)
+    rows: list[dict] = []
+    ok = 0
+    failed = 0
+
+    print(f"batch: {len(files)} graph(s)  algorithm={args.algorithm}  output={output_path}")
+
+    for path in files:
+        facade = ExperimentFacade()
+        graph_name = path.stem
+
+        upload_resp = facade.upload_graph({
+            "path": str(path),
+            "name": graph_name,
+            "kind": "file",
+            "directed": args.directed,
+            "weighted": args.weighted,
+        })
+        if upload_resp["status"] != "success":
+            print(f"  SKIP  {path.name}: {upload_resp['message']}", file=sys.stderr)
+            failed += 1
+            continue
+
+        run_resp = facade.run_job({
+            "graph_key": upload_resp["graph_key"],
+            "algorithm": args.algorithm,
+            "metrics": metrics,
+            "params": params,
+        })
+        if run_resp["status"] != "success":
+            print(f"  SKIP  {path.name}: {run_resp['message']}", file=sys.stderr)
+            failed += 1
+            continue
+
+        data = run_resp["data"]
+        base = {
+            "graph": data["graph_name"],
+            "algorithm": data["algorithm_name"],
+            "nodes_before": data["nodes_before"],
+            "edges_before": data["edges_before"],
+            "nodes_after": data["nodes_after"],
+            "edges_after": data["edges_after"],
+        }
+
+        if data["metric_results"]:
+            for m in data["metric_results"]:
+                for k, v in m["summary"].items():
+                    rows.append({**base, "metric": m["metric"], "key": k, "value": v})
+        else:
+            rows.append({**base, "metric": "", "key": "", "value": ""})
+
+        reduction = 100 * (1 - data["edges_after"] / data["edges_before"]) if data["edges_before"] else 0
+        print(f"  OK    {path.name}  edges {data['edges_before']} → {data['edges_after']} ({reduction:.1f}% reduction)")
+        ok += 1
+
+    with open(output_path, "w", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=_BATCH_FIELDNAMES)
+        writer.writeheader()
+        writer.writerows(rows)
+
+    print(f"\ndone: {ok} succeeded, {failed} failed  →  {output_path}")
+    return 0 if failed == 0 else 2
+
+
 def run_cli(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         prog="dwindle",
@@ -150,6 +241,20 @@ def run_cli(argv: list[str] | None = None) -> int:
     run_p.add_argument("--directed", action="store_true", help="treat graph as directed")
     run_p.add_argument("--weighted", action="store_true", help="treat graph as weighted")
 
+    batch_p = sub.add_parser("batch", help="run one algorithm across a directory of graphs and produce a combined CSV")
+    batch_p.add_argument("--dir", required=True, metavar="DIR", help="directory containing graph files")
+    batch_p.add_argument("--algorithm", required=True, help="algorithm name  (see: list-algorithms)")
+    batch_p.add_argument("--metrics", help="comma-separated metric names  (see: list-metrics)")
+    batch_p.add_argument(
+        "--params", nargs="*", metavar="KEY=VALUE",
+        help="algorithm params as KEY=VALUE pairs or a single JSON object string",
+    )
+    batch_p.add_argument("--output", default="batch_results.csv", metavar="FILE", help="output CSV path (default: batch_results.csv)")
+    batch_p.add_argument("--pattern", metavar="GLOB", help="filename glob to filter graph files (default: all recognised extensions)")
+    batch_p.add_argument("--recursive", action="store_true", help="recurse into subdirectories")
+    batch_p.add_argument("--directed", action="store_true", help="treat all graphs as directed")
+    batch_p.add_argument("--weighted", action="store_true", help="treat all graphs as weighted")
+
     sub.add_parser("list-algorithms", help="list available reduction algorithms")
     sub.add_parser("list-metrics", help="list available metrics")
     sub.add_parser("smoke", help="run a quick smoke test")
@@ -165,6 +270,8 @@ def run_cli(argv: list[str] | None = None) -> int:
 
     if args.command == "run":
         return cmd_run(args)
+    if args.command == "batch":
+        return cmd_batch(args)
     if args.command == "list-algorithms":
         return cmd_list_algorithms(args)
     if args.command == "list-metrics":
