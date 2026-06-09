@@ -36,7 +36,7 @@ class Experiment:
     errors: List[str] = field(default_factory=list)
 
     # auditing
-    created_at: datetime = field(default_factory=datetime.now)
+    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     completed_at: Optional[datetime] = None
 
     def start(self) -> None:
