@@ -2,9 +2,8 @@ from __future__ import annotations
 
 import os
 import networkx as nx
-from networkx import DiGraph, Graph
 from dataclasses import dataclass
-from typing import Any, Hashable
+from typing import Any
 
 from src.domain.graph_model import Graph
 

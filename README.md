@@ -122,7 +122,7 @@ dwindle batch --dir datasets/snap/ --algorithm local_degree --_density,clusterin
 dwindle --plugin ~/research/my_algo.py batch --dir datasets/ --algorithm my-algo --metrics spectral_similarity --output my_benchmark.csv
 ~~~
 
-note: the --plugin flag goes before batch (same as with run), since it's a global flag on the top-level parser.
+note: the `--plugin` flag goes before batch (same as with run), since it's a global flag on the top-level parser.
 
 ---
 
