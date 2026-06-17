@@ -2,9 +2,8 @@ from __future__ import annotations
 
 import os
 import networkx as nx
-from networkx import DiGraph, Graph
 from dataclasses import dataclass
-from typing import Any, Hashable
+from typing import Any
 
 from src.domain.graph_model import Graph
 
@@ -28,7 +27,7 @@ class GraphGateway:
     """
     [GATEWAY] to external graph data.
     """
-    def load(self, source: GraphSource) -> DiGraph[Hashable] | Graph[Hashable] | Graph:
+    def load(self, source: GraphSource) -> Graph:
         print(f"\n[GATEWAY] loading graph '{source.name}' from {source.kind}...")
 
         if source.kind == "file":
@@ -70,10 +69,10 @@ class GraphGateway:
             return Graph.from_loader(name=source.name, loader_f=lazy_loader)
 
         elif source.kind == "memory":
-            if source.value is None:
-                return nx.DiGraph() if source.directed else nx.Graph()
-
-            return Graph.from_networkx(source.value, name=source.name)
+            nx_graph = source.value if source.value is not None else (
+                nx.DiGraph() if source.directed else nx.Graph()
+            )
+            return Graph.from_networkx(nx_graph, name=source.name)
 
         else:
             raise ValueError(f"unknown source kind: {source.kind}")
