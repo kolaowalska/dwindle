@@ -12,7 +12,6 @@ class ExperimentFacade:
     [REMOTE FACADE] provides a coarse interface for interacting with experiments
     """
     def __init__(self):
-        # in a real app this would be injected
         self.graph_repo = InMemoryGraphRepository()
         self.experiment_repo = InMemoryExperimentRepository()
         self._service = ExperimentService(self.graph_repo, self.experiment_repo)
@@ -30,33 +29,21 @@ class ExperimentFacade:
             directed = request_json.get("directed", False),
             weighted = request_json.get("weighted", False)
         )
-        try:
-            key = self._service.import_graph(source)
-            return {"status": "success", "graph_key": key}
-        except Exception as e:
-            return {"status": "error", "message": str(e)}
+        key = self._service.import_graph(source)
+        return {"status": "success", "graph_key": key}
 
     def run_job(self, request_json: Dict[str, Any]) -> Dict[str, Any]:
         """
         simulates POST /jobs/run
         input: {"graph_key": "...", "algorithm": "...", "metrics": [...], "params": {...}}
         """
-        try:
-            # delegating to [SERVICE LAYER]
-            dto = self._service.run_experiment(
-                graph_key=request_json["graph_key"],
-                algorithm_name=request_json["algorithm"],
-                metric_names=request_json.get("metrics", []),
-                params=request_json.get("params", {})
-            )
-
-            # serializes [DTO] to a JSON-compatible dict
-            return {
-                "status": "success",
-                "data": asdict(dto)
-            }
-        except Exception as e:
-            return {"status": "error", "message": str(e)}
+        dto = self._service.run_experiment(
+            graph_key=request_json["graph_key"],
+            algorithm_name=request_json["algorithm"],
+            metric_names=request_json.get("metrics", []),
+            params=request_json.get("params", {})
+        )
+        return {"status": "success", "data": asdict(dto)}
 
     @property
     def service(self):

@@ -82,16 +82,16 @@ def cmd_run(args) -> int:
     facade = ExperimentFacade()
 
     graph_name = Path(args.graph).stem
-    upload_resp = facade.upload_graph({
-        "path": args.graph,
-        "name": graph_name,
-        "kind": "file",
-        "directed": args.directed,
-        "weighted": args.weighted,
-    })
-
-    if upload_resp["status"] != "success":
-        print(f"error: {upload_resp['message']}", file=sys.stderr)
+    try:
+        upload_resp = facade.upload_graph({
+            "path": args.graph,
+            "name": graph_name,
+            "kind": "file",
+            "directed": args.directed,
+            "weighted": args.weighted,
+        })
+    except Exception as e:
+        print(f"error: {e}", file=sys.stderr)
         return 1
 
     metrics = [m.strip() for m in args.metrics.split(",")] if args.metrics else []
@@ -101,15 +101,15 @@ def cmd_run(args) -> int:
         print(f"error: {e}", file=sys.stderr)
         return 1
 
-    run_resp = facade.run_job({
-        "graph_key": upload_resp["graph_key"],
-        "algorithm": args.algorithm,
-        "metrics": metrics,
-        "params": params,
-    })
-
-    if run_resp["status"] != "success":
-        print(f"error: {run_resp['message']}", file=sys.stderr)
+    try:
+        run_resp = facade.run_job({
+            "graph_key": upload_resp["graph_key"],
+            "algorithm": args.algorithm,
+            "metrics": metrics,
+            "params": params,
+        })
+    except Exception as e:
+        print(f"error: {e}", file=sys.stderr)
         return 1
 
     _print_result(run_resp["data"], args.output)
@@ -165,26 +165,22 @@ def cmd_batch(args) -> int:
         facade = ExperimentFacade()
         graph_name = path.stem
 
-        upload_resp = facade.upload_graph({
-            "path": str(path),
-            "name": graph_name,
-            "kind": "file",
-            "directed": args.directed,
-            "weighted": args.weighted,
-        })
-        if upload_resp["status"] != "success":
-            print(f"  SKIP  {path.name}: {upload_resp['message']}", file=sys.stderr)
-            failed += 1
-            continue
-
-        run_resp = facade.run_job({
-            "graph_key": upload_resp["graph_key"],
-            "algorithm": args.algorithm,
-            "metrics": metrics,
-            "params": params,
-        })
-        if run_resp["status"] != "success":
-            print(f"  SKIP  {path.name}: {run_resp['message']}", file=sys.stderr)
+        try:
+            upload_resp = facade.upload_graph({
+                "path": str(path),
+                "name": graph_name,
+                "kind": "file",
+                "directed": args.directed,
+                "weighted": args.weighted,
+            })
+            run_resp = facade.run_job({
+                "graph_key": upload_resp["graph_key"],
+                "algorithm": args.algorithm,
+                "metrics": metrics,
+                "params": params,
+            })
+        except Exception as e:
+            print(f"  SKIP  {path.name}: {e}", file=sys.stderr)
             failed += 1
             continue
 
