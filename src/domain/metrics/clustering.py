@@ -22,6 +22,12 @@ class Clustering(Metric):
         weight_arg = "weight" if graph.is_weighted() else None
         g_undirected = g.to_undirected() if g.is_directed() else g
 
+        if g_undirected.number_of_nodes() == 0:
+            return MetricResult(
+                metric=self.INFO.name,
+                summary={"avg_clustering": 0.0, "transitivity": 0.0, "weighted": bool(weight_arg)},
+            )
+
         avg_clustering = float(nx.average_clustering(g_undirected, weight=weight_arg))
         transitivity = float(nx.transitivity(g_undirected))
 
