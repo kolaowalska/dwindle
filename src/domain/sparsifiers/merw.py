@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import numpy as np
 import scipy.sparse.linalg as sla
 import networkx as nx
@@ -8,6 +9,8 @@ from src.domain.transforms.base import TransformInfo
 from src.domain.graph_model import Graph, RunParams
 from src.domain.sparsifiers.base import Sparsifier
 from src.domain.sparsifiers.registry import register_sparsifier
+
+log = logging.getLogger(__name__)
 
 
 def _dominant_eigenvector(A, n: int) -> np.ndarray:
@@ -100,7 +103,7 @@ class MERWSparsifier(Sparsifier):
                 if h.has_edge(*e) and s < float("inf")
             }
             if not candidates:
-                print("[MERWSparsifier] no more prunable edges, stopping early")
+                log.warning("no more prunable edges, stopping early")
                 break
 
             u, v = min(candidates, key=lambda e: candidates[e])

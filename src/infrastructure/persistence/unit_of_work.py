@@ -1,8 +1,13 @@
 from __future__ import annotations
+
+import logging
 from typing import List
 from src.infrastructure.persistence.repo import GraphRepository, ExperimentRepository
 from src.domain.graph_model import Graph
 from src.domain.experiment import Experiment
+
+log = logging.getLogger(__name__)
+
 
 class UnitOfWork:
     """
@@ -23,7 +28,7 @@ class UnitOfWork:
         self._new_experiments.append(experiment)
 
     def commit(self):
-        print("\n[UNIT OF WORK] committing transaction...")
+        log.info("committing transaction")
 
         for g in self._new_graphs:
             self.graph_repo.save(g)
@@ -31,8 +36,7 @@ class UnitOfWork:
             self.experiment_repo.save(e)
 
         self.committed = True
-
-        print(f"[UNIT OF WORK] committed transaction: {len(self._new_graphs)} graph(s), {len(self._new_experiments)} experiment(s)")
+        log.info(f"committed: {len(self._new_graphs)} graph(s), {len(self._new_experiments)} experiment(s)")
 
     def __enter__(self):
         return self
@@ -41,4 +45,4 @@ class UnitOfWork:
         if not self.committed and exc_type is None:
             self.commit()
         elif exc_type:
-            print(f"[UNIT OF WORK] rolling back due to error: {exc_val}")
+            log.warning(f"rolling back due to error: {exc_val}")

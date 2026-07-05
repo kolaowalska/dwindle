@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import logging
+import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-import time
-import logging
 
 from src.domain.graph_model import Graph, RunParams, OperationDescriptor
+
+log = logging.getLogger(__name__)
 
 
 @dataclass
@@ -19,7 +21,6 @@ class TransformInfo:
     supports_directed: bool = True
     supports_weighted: bool = True
     deterministic: bool = False
-    # param_schema: Mapping[str, ParamSpec] = field(default_factory=dict)
 
     def descriptor(self) -> OperationDescriptor:
         return OperationDescriptor(kind="transform", name=self.name, version=self.version)
@@ -30,19 +31,19 @@ class GraphTransform(ABC):
 
     def execute(self, graph: Graph, params: RunParams) -> Graph:
         if graph.node_count == 0:
-            logging.warning(f"[{self.__class__.__name__}] no nodes found")
+            log.warning(f"[{self.__class__.__name__}] no nodes found")
 
-        print(f"\n[{self.__class__.__name__}] starting transformation on '{graph.name}'")
-        start_time = time.time()
+        log.info(f"[{self.__class__.__name__}] starting transformation on '{graph.name}'")
+        start_time = time.perf_counter()
 
         result_graph = self.run(graph, params)
-        duration = time.time() - start_time
+        duration = time.perf_counter() - start_time
 
         result_graph.metadata['algorithm'] = self.__class__.__name__
         result_graph.metadata['execution_time'] = duration
         result_graph.metadata['parent_graph'] = graph.name
 
-        print(f"[{self.__class__.__name__}] finished transformation on '{graph.name}' in {duration:.5f}s")
+        log.info(f"[{self.__class__.__name__}] finished in {duration:.5f}s")
         return result_graph
 
     @abstractmethod

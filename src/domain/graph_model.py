@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass, field
 from typing import Any, Mapping, MutableMapping, Optional, Dict, Iterable, Tuple, NewType, Callable
 import uuid
 import networkx as nx
 import numpy as np
 import scipy.sparse.linalg as sla
+
+log = logging.getLogger(__name__)
 
 # VALUE OBJECTS
 
@@ -68,13 +71,9 @@ class Graph:
         if self._nx:
             self.directed = self._nx.is_directed()
             self.weighted = nx.is_weighted(self._nx)
-            # self.weighted = any("weight" in d for _, _, d in nx_graph.edges(data=True) or weight_attr != "weight")
         else:
-            self.directed = None # unknown until loaded
+            self.directed = None
             self.weighted = None
-        # else:
-        #     self.directed = False
-        #     self.weighted = False
 
     def to_networkx(self, copy: bool = True) -> nx.Graph | nx.DiGraph:
         """
@@ -83,7 +82,7 @@ class Graph:
         -> copy=False returns a reference to the internal object. fast (O(1)), zero extra ram. use to read properties
         """
         if self._nx is None and self._loader is not None:
-            print(f"[LAZY LOAD] loading absolutely massive graph data for '{self.name}', hold on tight... ;)")
+            log.info(f"lazy loading graph data for '{self.name}'")
             self._nx = self._loader()
 
             if self._nx is not None:
@@ -97,16 +96,13 @@ class Graph:
 
     @property
     def node_count(self) -> int:
-        # return self._nx.number_of_nodes()
         return self.to_networkx(copy=False).number_of_nodes()
 
     @property
     def edge_count(self) -> int:
-        # return self._nx.number_of_edges()
         return self.to_networkx(copy=False).number_of_edges()
 
     def is_directed(self) -> bool:
-        # return self.directed
         return self.to_networkx(copy=False).is_directed()
 
     def is_weighted(self) -> bool:
@@ -153,19 +149,19 @@ class Graph:
 
     @property
     def spectral_properties(self) -> Dict[str, Any]:
-        if self._spectral_cache is None:
+        if self._spectral_cache is not None:
             return self._spectral_cache
 
         G = self.to_networkx(copy=False)
-        A = nx.to_scipy_sparse_array(G, dtype=float, format="csr") # adjacency matrix
+        A = nx.to_scipy_sparse_array(G, dtype=float, format="csr")
 
         try:
             eigenvalues, eigenvectors = sla.eigsh(A, k=1, which="LM")
             lambda_value = float(eigenvalues[0])
-            v = np.abs(eigenvectors[:, 0]) # flattening & absolute value
-            v = v / np.linalg.norm(v) # normalizing just in case
+            v = np.abs(eigenvectors[:, 0])
+            v = v / np.linalg.norm(v)
         except Exception as e:
-            print(f"sparse eigenvector computation failed ({e}), falling back to dense")
+            log.warning(f"sparse eigenvector computation failed ({e}), falling back to dense")
             eigenvalues, eigenvectors = np.linalg.eigh(nx.to_numpy_array(G))
             lambda_value = float(eigenvalues[-1])
             v = np.abs(eigenvectors[:, -1])

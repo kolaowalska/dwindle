@@ -1,10 +1,14 @@
 from __future__ import annotations
+
+import logging
 import networkx as nx
 import random
 
 from src.domain.transforms.base import GraphTransform, TransformInfo
 from src.domain.transforms.registry import register_transform
 from src.domain.graph_model import Graph, RunParams
+
+log = logging.getLogger(__name__)
 
 
 @register_transform("mock_coarsening")
@@ -26,7 +30,7 @@ class MockCoarsening(GraphTransform):
 
         while G.number_of_nodes() > target_nodes and retries < max_retries:
             if G.number_of_edges() == 0:
-                print("[MockCoarsening] no edges left to contract, stopping early")
+                log.warning("no edges left to contract, stopping early")
                 break
 
             edges = list(G.edges())
@@ -44,7 +48,6 @@ class MockCoarsening(GraphTransform):
             retries = 0
 
         final_nodes = G.number_of_nodes()
-        # print(f"[MockCoarsening] finished with {final_nodes} nodes")
 
         return Graph.from_networkx(
             G,
