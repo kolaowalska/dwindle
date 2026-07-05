@@ -8,17 +8,6 @@ from typing import Any
 COL_WIDTH = 20
 ROW_LABEL_WIDTH = 32
 
-# ── name abbreviations ────────────────────────────────────────────────────────
-
-# _ALGO_ABBREV = {
-#     "random":           "random",
-#     "k_neighbor":       "k-nbr",
-#     "local_degree":     "loc-deg",
-#     "mock_coarsening":  "coarsen",
-#     "merw":             "merw-v",
-#     "merw_edge":        "merw-e",
-# }
-
 _METRIC_ABBREV = {
     "diameter":                 "diameter",
     "average path length":      "avg-path",

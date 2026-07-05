@@ -69,10 +69,7 @@ def _impact_score(g: nx.Graph, baseline_distribution: np.ndarray, nodes: list) -
     return scores
 
 @register_transform("merw_coarsening")
-class MockCoarsening(GraphTransform):
-    """
-    TODO
-    """
+class MERWCoarsening(GraphTransform):
     def run(self, graph: Graph, params: RunParams) -> Graph:
         rho = float(params.get("rho", 1.0))
 

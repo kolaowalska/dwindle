@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+import logging
 import os
 import networkx as nx
 from dataclasses import dataclass
 from typing import Any
 
 from src.domain.graph_model import Graph
+
+log = logging.getLogger(__name__)
 
 _LOADERS = {
     ".graphml": lambda path, source: nx.read_graphml(path),
@@ -28,7 +31,7 @@ class GraphGateway:
     [GATEWAY] to external graph data.
     """
     def load(self, source: GraphSource) -> Graph:
-        print(f"\n[GATEWAY] loading graph '{source.name}' from {source.kind}...")
+        log.info(f"loading graph '{source.name}' from {source.kind}")
 
         if source.kind == "file":
             path = source.value
@@ -45,7 +48,7 @@ class GraphGateway:
             ext = os.path.splitext(str(path))[1].lower()
 
             def lazy_loader():
-                print(f"\n[LAZY LOAD] reading file {path}")
+                log.debug(f"reading file {path}")
 
                 if ext in _LOADERS:
                     return _LOADERS[ext](str(path), source)

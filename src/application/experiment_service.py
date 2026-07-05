@@ -8,12 +8,11 @@ from src.domain.graph_model import Graph, RunParams
 from src.domain.experiment import Experiment
 from src.domain.sparsifiers.registry import SparsifierRegistry
 from src.domain.metrics.registry import MetricRegistry
-from src.domain.metrics.base import MetricResult
+from src.domain.metrics.base import MetricResult, RelativeMetric
 
 from src.infrastructure.graph_gateway import GraphGateway, GraphSource
 from src.infrastructure.persistence.repo import GraphRepository, ExperimentRepository
 from src.infrastructure.persistence.unit_of_work import UnitOfWork
-from src.infrastructure.persistence.stubs import InMemoryExperimentRepository
 from src.application.dto import ExperimentDTO
 
 
@@ -24,7 +23,7 @@ class ExperimentService:
             experiment_repo: ExperimentRepository,
             gateway: Optional[GraphGateway] = None):
         self.graph_repo = graph_repo
-        self.experiment_repo = experiment_repo or InMemoryExperimentRepository()
+        self.experiment_repo = experiment_repo
         self.gateway = gateway or GraphGateway()
 
     def import_graph(self, source: GraphSource) -> str:
@@ -102,18 +101,18 @@ class ExperimentService:
 
         for name in metric_names:
             metric = MetricRegistry.get(name)
+            if isinstance(metric, RelativeMetric):
+                raise ValueError(
+                    f"metric '{name}' is a relative metric and requires two graphs; "
+                    f"it cannot be used via the CLI. use it programmatically via DeltaMetric or the demo."
+                )
             start = time.perf_counter()
             result = metric.compute(graph, RunParams({}))
             duration = time.perf_counter() - start
 
-            new_summary = dict(result.summary)
-            new_summary['execution_time'] = duration
-
-            # results.append(metric.compute(graph, RunParams({})))
-
             updated_result = MetricResult(
                 metric=result.metric,
-                summary=new_summary,
+                summary={**result.summary, "execution_time": duration},
                 artifacts=result.artifacts
             )
             results.append(updated_result)
@@ -141,9 +140,8 @@ class ExperimentService:
             # 1. discovery
             SparsifierRegistry.discover()
             TransformRegistry.discover()
-            start = time.perf_counter()
 
-            # 2. polymorphic execution
+            # 2. polymorphic execution (timing handled inside execute())
             if algorithm_name in SparsifierRegistry.list():
                 h = self.run_sparsifier(graph_key, algorithm_name, run_params)
             elif algorithm_name in TransformRegistry.list():
@@ -151,10 +149,6 @@ class ExperimentService:
             else:
                 all_algos = sorted(SparsifierRegistry.list() + TransformRegistry.list())
                 raise KeyError(f"algorithm '{algorithm_name}' not found. available: {all_algos}")
-
-            transform_time = time.perf_counter() - start
-            if isinstance(h.metadata, dict):
-                h.metadata['execution_time'] = transform_time
 
             # 3. compute metrics
             metric_results = self.compute_metrics(h, metric_names)
@@ -166,11 +160,9 @@ class ExperimentService:
                 experiment.add_result(m.metric, m)
             experiment.finish()
 
-            # 5. register new objects
+            # 5. register new objects; UnitOfWork commits on __exit__ when no exception
             uow.register_new_graph(h)
             uow.register_new_experiment(experiment)
-
-            # context manager __exit__ should call uow.commit() automatically here (?)
 
         # 6. return DTO for UI/console
         original_graph = self.get_graph(graph_key)

@@ -5,6 +5,7 @@ from src.domain.graph_model import Graph
 from src.domain.experiment import Experiment, RunID
 
 
+
 class GraphRepository(ABC):
     """
     interface for storing and retrieving Graph domain objects
@@ -31,5 +32,5 @@ class ExperimentRepository(ABC):
         pass
 
     @abstractmethod
-    def get(self, run_id: RunID) -> Experiment:
+    def get(self, run_id: RunID) -> Optional[Experiment]:
         pass

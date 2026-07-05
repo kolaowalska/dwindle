@@ -8,7 +8,7 @@ from src.domain.metrics.registry import register_metric
 
 
 @register_metric("degree_distribution")
-class APSPMetric(Metric):
+class DegreeDistribution(Metric):
     INFO = MetricInfo(
         name="degree distribution",
         type="absolute",
