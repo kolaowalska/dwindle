@@ -106,7 +106,6 @@ class Graph:
         return self.to_networkx(copy=False).is_directed()
 
     def is_weighted(self) -> bool:
-        """returns True if all edges have a 'weight' attribute"""
         if self.weighted is not None:
             return self.weighted
         return nx.is_weighted(self.to_networkx(copy=False))
