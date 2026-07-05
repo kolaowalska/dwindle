@@ -10,12 +10,12 @@ the core goal of this framework is to become a tool for the systematic study of 
 
 ### general functionalities
 
-* __multi-source graph ingestion__: loading graphs from various formats (edgelists, memory objects) via a unified gateway. additionally, the framework uses lazy loading to boost performance while handling large datasets
+* __multi-source graph ingestion__: loading graphs from various formats (edgelists, memory objects) via a unified gateway. additionally, the framework uses lazy loading to boost performance while handling large datasets. supported file extensions: `.edgelist`, `.txt`, `.edges`, `.csv`, `.graphml`, `.gexf`, `.gml`, `.adjlist`
 * __polymorphic transformations__: support for different types of graph reduction
-  - __sparsification__ - selection of the most significant nodes/edges and discarding others
-  - __coarsening__ - aggregation of similar nodes/edges to construct a smaller graph
+  - __sparsification__ - selection of the most significant nodes/edges and discarding others. implemented algorithms: `random`, `k_neighbor`, `local_degree`, `merw`, `pagerank`
+  - __coarsening__ - aggregation/merging of nodes to construct a smaller graph. implemented algorithms: `mock_coarsening`, `merw_coarsening`
   - __condensation (work in progress)__ - learning a synthetic graph from scratch
-* __automated metric registry__: calculating structural properties in the original and modified graph on the fly 
+* __automated metric registry__: calculating structural properties in the original and modified graph on the fly. available metrics: `clustering`, `community_preservation`, `connectivity`, `degree_distribution`, `diameter`, `edge_density`, `avg_path_length`, `avg_stretch`, `apsp`, `spectral_similarity`, `effective_resistance`
 * __experiment management__: orchestrating full experiments from start to finish, where a graph is imported, transformed, analyzed, and the results are persisted as an audit trail
 * __efficiency benchmarking__: automatic tracking of wall-clock time for both transformation and metric phases to evaluate theoretical vs. empirical complexity
 * __visualization__: basic metric value plots and graph figures
@@ -54,7 +54,8 @@ dwindle list-metrics
 ~~~
 
 ### using the cli
-to perform an experiment, run the following command:
+#### single experiment
+to perform an experiment on one graph file, run:
 ~~~shell
 dwindle run --graph <path> --algorithm <name> [options]
 ~~~
@@ -71,6 +72,24 @@ dwindle run --graph <path> --algorithm <name> [options]
   - `--weighted` — treat the third column in the edgelist as edge weights (default: unweighted)
   - `--plugin` — path to a python file to import before registry discovery; can be repeated to load multiple plugins (see [extending via plugins](#extending-via-plugins))
 
+#### batch experiments
+to run one algorithm across an entire directory of graphs and collect results into a single csv:
+~~~shell
+dwindle batch --dir <directory> --algorithm <name> --output <file.csv> [options]
+~~~
+
+**required:**
+  - `--dir` — path to a directory containing graph files
+  - `--algorithm` — reduction algorithm to apply to every graph
+
+**optional:**
+  - `--metrics` — comma-separated list of metrics to compute for each graph
+  - `--params` — algorithm parameters applied uniformly to every graph
+  - `--output` — output csv path (default: `batch_results.csv`)
+  - `--pattern` — filename glob to filter which files inside the directory are processed (default: all recognised extensions)
+  - `--recursive` — recurse into subdirectories
+  - `--directed` / `--weighted` — applied uniformly to all graphs
+
 ### examples
 
 run random sparsification and print results to the terminal:
@@ -83,6 +102,11 @@ pass parameters as a json object and save results to a flat csv for further anal
 dwindle run --graph my_graph.edgelist --algorithm k_neighbor --weighted --params '{"rho": 0.5}' --metrics edge_density,spectral_similarity --output results.csv
 ~~~
 
+run one algorithm across a whole dataset and collect everything into a single csv:
+~~~shell
+dwindle batch --dir ./dataset/ --algorithm k_neighbor --params rho=0.5 --metrics edge_density,spectral_similarity --recursive --output study.csv
+~~~
+
 load a custom algorithm from outside the project before running:
 ~~~shell
 dwindle --plugin ~/research/my_sparsifier.py run --graph my_graph.edgelist --algorithm my-algo --metrics clustering
@@ -91,9 +115,8 @@ dwindle --plugin ~/research/my_sparsifier.py run --graph my_graph.edgelist --alg
 
 ## extensibility
 ### extending via plugins
-the `--plugin` flag lets you load any `.py` file before the internal registries are populated, so you can add algorithms, metrics, or transforms without touching the project source.
-
-a plugin file is a plain python module that uses the same registration decorators as the built-in implementations:
+the framework is algorithm-agnostic. the `--plugin` flag lets you load any `.py` file before the internal registries are populated, so you can add algorithms, metrics, or transforms without touching the project source.
+a plugin file is a plain python module that uses the same registration decorators as the built-in implementations. you can register new sparsifiers, coarsening transforms, or metrics:
 
 ~~~python
 # ~/research/my_sparsifier.py
@@ -103,7 +126,29 @@ from src.domain.sparsifiers.base import Sparsifier
 
 @register_sparsifier("my-algo")
 class MySparsifier(Sparsifier):
-    def reduce(self, g: nx.Graph, **params) -> nx.Graph:
+    def run(self, graph, params) -> graph:
+        ...
+~~~
+
+~~~python
+# ~/research/my_coarsening.py
+from src.domain.transforms.registry import register_transform
+from src.domain.transforms.base import GraphTransform
+
+@register_transform("my-coarsening")
+class MyCoarsening(GraphTransform):
+    def run(self, graph, params) -> graph:
+        ...
+~~~
+
+~~~python
+# ~/research/my_metric.py
+from src.domain.metrics.registry import register_metric
+from src.domain.metrics.base import Metric
+
+@register_metric("my-metric")
+class MyMetric(Metric):
+    def compute(self, graph) -> dict:
         ...
 ~~~
 
@@ -120,14 +165,3 @@ dwindle --plugin ~/algo.py --plugin ~/metric.py run --graph g.edgelist --algorit
 ~~~
 the plugin's parent directory is automatically added to `sys.path`, so any local imports inside the plugin resolve relative to its own location regardless of where `graph-reduce` is invoked from.
 
-### algorithm agnosticism
-it makes no difference whether the operation is removing edges, merging nodes, or reweighting the entire graph; as long as the algorithm follows the `GraphTransform` interface, it can be plugged into the pipeline without changing a single line of core code.
-
-### dynamic metric discovery 
-adding a new metric requires only creating a single new file, and the system automatically discovers new metrics at runtime using a scanning decorator. this makes it trivial to add new evaluation criteria with progressing research needs.
-
-### interchangeable storage
-the current system uses an in-memory storage for speed and demo purposes, but the architecture is decoupled such that swapping to a SQL database or a specialized graph database (like Neo4j) requires only changing the `Repository` implementation, while the rest of the logic remains untouched.
-
-### future directions
-this project is designed to eventually support adapting reduction strategies in dynamic graphs and automating the selection of reduction techniques based on graph topology for machine learning integration. 
