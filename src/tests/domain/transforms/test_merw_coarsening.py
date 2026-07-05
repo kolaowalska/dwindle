@@ -3,7 +3,7 @@ from __future__ import annotations
 import pytest
 import networkx as nx
 
-from src.domain.transforms.merw_coarsening import MockCoarsening as MERWCoarsening
+from src.domain.transforms.merw_coarsening import MERWCoarsening
 from src.domain.graph_model import Graph, RunParams
 
 

@@ -3,7 +3,7 @@ from __future__ import annotations
 import pytest
 import networkx as nx
 
-from src.domain.metrics.degree_distribution import APSPMetric as DegreeDistribution
+from src.domain.metrics.degree_distribution import DegreeDistribution
 from src.domain.graph_model import Graph, RunParams
 
 
