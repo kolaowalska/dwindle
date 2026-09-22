@@ -56,3 +56,15 @@ def test_distribution_sums_to_one(complete5, no_params, metric):
 def test_result_metric_name(path10, no_params, metric):
     result = metric.compute(path10, no_params)
     assert result.metric == "degree distribution"
+
+def test_entropy_is_zero_for_regular_graph(complete5, no_params, metric):
+    assert metric.compute(complete5, no_params).summary["entropy"] == pytest.approx(0.0)
+
+def test_entropy_is_positive_when_degrees_differ(path10, no_params, metric):
+    assert metric.compute(path10, no_params).summary["entropy"] > 0.0
+
+def test_empty_and_non_empty_share_summary_schema(empty, path10, no_params, metric):
+    assert (
+        metric.compute(empty, no_params).summary.keys()
+        == metric.compute(path10, no_params).summary.keys()
+    )
