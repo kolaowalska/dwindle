@@ -5,7 +5,7 @@ import scipy.sparse.linalg as sla
 import networkx as nx
 
 from src.domain.graph_model import Graph, RunParams
-from src.domain.transforms.base import GraphTransform
+from src.domain.transforms.base import GraphTransform, TransformInfo
 from src.domain.transforms.registry import register_transform
 
 
@@ -19,7 +19,7 @@ def _dominant_eigenvector(A, n: int) -> np.ndarray:
         v = np.abs(eigenvectors[:, -1])
     else:
         try:
-            _, eigenvectors = sla.eigsh(A, k=1, which="LM", tol=1e-10, maxiter=n * 10)
+            _, eigenvectors = sla.eigsh(A, k=1, which="LA", tol=1e-10, maxiter=n * 10)
             v = np.abs(eigenvectors[:, 0])
         except Exception:
             dense = A.toarray()
@@ -70,6 +70,8 @@ def _impact_score(g: nx.Graph, baseline_distribution: np.ndarray, nodes: list) -
 
 @register_transform("merw_coarsening")
 class MERWCoarsening(GraphTransform):
+    INFO = TransformInfo(name="MERW coarsening", abbrev="merw-c")
+
     def run(self, graph: Graph, params: RunParams) -> Graph:
         rho = float(params.get("rho", 1.0))
 

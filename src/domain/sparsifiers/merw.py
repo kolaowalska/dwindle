@@ -22,7 +22,7 @@ def _dominant_eigenvector(A, n: int) -> np.ndarray:
         v = np.abs(eigenvectors[:, -1])
     else:
         try:
-            _, eigenvectors = sla.eigsh(A, k=1, which="LM", tol=1e-10, maxiter=n * 10)
+            _, eigenvectors = sla.eigsh(A, k=1, which="LA", tol=1e-10, maxiter=n * 10)
             v = np.abs(eigenvectors[:, 0])
         except Exception:
             _, eigenvectors = np.linalg.eigh(A.toarray())

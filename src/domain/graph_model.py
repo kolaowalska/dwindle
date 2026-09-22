@@ -68,7 +68,7 @@ class Graph:
         self.metadata: Dict[str, Any] = dict(metadata or {})
         self._spectral_cache = None
 
-        if self._nx:
+        if self._nx is not None:
             self.directed = self._nx.is_directed()
             self.weighted = nx.is_weighted(self._nx)
         else:
@@ -155,7 +155,7 @@ class Graph:
         A = nx.to_scipy_sparse_array(G, dtype=float, format="csr")
 
         try:
-            eigenvalues, eigenvectors = sla.eigsh(A, k=1, which="LM")
+            eigenvalues, eigenvectors = sla.eigsh(A, k=1, which="LA")
             lambda_value = float(eigenvalues[0])
             v = np.abs(eigenvectors[:, 0])
             v = v / np.linalg.norm(v)
@@ -169,7 +169,7 @@ class Graph:
         self._spectral_cache = {
             "lambda": lambda_value,
             "eigenvector": v,
-            "entropy_rate": np.log(lambda_value)
+            "entropy_rate": float(np.log(lambda_value)) if lambda_value > 0 else float("-inf")
         }
 
         return self._spectral_cache
