@@ -101,3 +101,43 @@ def test_load_graphml_file(gateway, tmp_path):
 def test_unknown_kind_raises(gateway):
     with pytest.raises(ValueError, match="unknown source kind"):
         gateway.load(GraphSource(kind="ftp", name="x"))
+
+# loader robustness
+
+def test_edgelist_with_string_node_labels(gateway, tmp_path):
+    f = tmp_path / "names.edgelist"
+    f.write_text("alice bob\nbob carol\n")
+    result = gateway.load(GraphSource(kind="file", value=str(f), name="names"))
+    assert result.node_count == 3
+    assert result.edge_count == 2
+
+def test_edgelist_keeps_integer_labels_when_possible(gateway, tmp_path):
+    f = tmp_path / "ints.edgelist"
+    f.write_text("0 1\n1 2\n")
+    result = gateway.load(GraphSource(kind="file", value=str(f), name="ints"))
+    assert all(isinstance(n, int) for n in result.nodes())
+
+def test_csv_uses_comma_delimiter(gateway, tmp_path):
+    f = tmp_path / "g.csv"
+    f.write_text("1,2\n2,3\n3,4\n")
+    result = gateway.load(GraphSource(kind="file", value=str(f), name="csv"))
+    assert result.node_count == 4
+    assert result.edge_count == 3
+
+def test_weighted_csv_reads_third_column(gateway, tmp_path):
+    f = tmp_path / "w.csv"
+    f.write_text("1,2,0.5\n2,3,1.5\n")
+    result = gateway.load(GraphSource(kind="file", value=str(f), name="wcsv", weighted=True))
+    assert result.edge_weight(1, 2) == pytest.approx(0.5)
+
+def test_directed_flag_promotes_graphml(gateway, tmp_path):
+    f = tmp_path / "g.graphml"
+    nx.write_graphml(nx.path_graph(3), str(f))
+    result = gateway.load(GraphSource(kind="file", value=str(f), name="gm", directed=True))
+    assert result.is_directed()
+
+def test_graphml_keeps_its_own_direction_when_flag_unset(gateway, tmp_path):
+    f = tmp_path / "d.graphml"
+    nx.write_graphml(nx.DiGraph([(0, 1), (1, 2)]), str(f))
+    result = gateway.load(GraphSource(kind="file", value=str(f), name="dgm"))
+    assert result.is_directed()

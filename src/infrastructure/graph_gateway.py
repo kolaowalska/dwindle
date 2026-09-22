@@ -26,6 +26,16 @@ class GraphSource:
     directed: bool = False
     weighted: bool = False
 
+
+def _apply_direction(g: nx.Graph, source: GraphSource) -> nx.Graph:
+    """
+    formats like graphml carry their own directedness, so `directed` only
+    promotes an undirected file; it never demotes a directed one.
+    """
+    if source.directed and not g.is_directed():
+        return g.to_directed()
+    return g
+
 class GraphGateway:
     """
     [GATEWAY] to external graph data.
@@ -51,23 +61,28 @@ class GraphGateway:
                 log.debug(f"reading file {path}")
 
                 if ext in _LOADERS:
-                    return _LOADERS[ext](str(path), source)
+                    return _apply_direction(_LOADERS[ext](str(path), source), source)
 
                 create_using = nx.DiGraph if source.directed else nx.Graph
+                delimiter = "," if ext == ".csv" else None
+                data = (('weight', float),) if source.weighted else False
 
-                if source.weighted:
+                try:
                     return nx.read_edgelist(
                         str(path),
                         nodetype=int,
                         create_using=create_using,
-                        data=(('weight', float),)
+                        delimiter=delimiter,
+                        data=data
                     )
-                return nx.read_edgelist(
-                    str(path),
-                    nodetype=int,
-                    create_using=create_using,
-                    data=False
-                )
+                except (TypeError, ValueError):
+                    log.info(f"non-integer node labels in {path}, reading them as strings")
+                    return nx.read_edgelist(
+                        str(path),
+                        create_using=create_using,
+                        delimiter=delimiter,
+                        data=data
+                    )
 
             return Graph.from_loader(name=source.name, loader_f=lazy_loader)
 
