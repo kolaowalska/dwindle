@@ -42,3 +42,14 @@ def test_result_summary_keys(path10, no_params, metric):
     result = metric.compute(path10, no_params)
     assert "kirchhoff_index" in result.summary
     assert "component_nodes" in result.summary
+
+def test_empty_graph_does_not_raise(empty, no_params, metric):
+    result = metric.compute(empty, no_params)
+    assert result.summary["kirchhoff_index"] == 0.0
+    assert result.summary["component_nodes"] == 0
+
+def test_empty_graph_keeps_summary_schema(empty, path10, no_params, metric):
+    assert (
+        metric.compute(empty, no_params).summary.keys()
+        == metric.compute(path10, no_params).summary.keys()
+    )

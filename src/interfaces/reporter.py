@@ -308,7 +308,7 @@ def _print_deltas_table(
     columns: list[tuple[str, str]],
     resolve: callable,
 ) -> None:
-    _print_section(f"DELTAS (H vs G)  ·  {_c("green", _GREEN)} = increase  ·  {_c("red", _RED)} = decrease")
+    _print_section(f"DELTAS (H vs G)  ·  {_c('green', _GREEN)} = increase  ·  {_c('red', _RED)} = decrease")
     col_headers = [resolve(label, algo) for label, algo in columns]
     delta_keys: list[tuple[str, str]] = []
     seen: set = set()

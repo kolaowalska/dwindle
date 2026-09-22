@@ -61,3 +61,20 @@ def test_directed_graphs_converted(directed, k_params, metric):
 def test_result_metric_name(path10, complete5, k_params, metric):
     result = metric.compute(path10, complete5, k_params)
     assert result.metric == "spectral similarity"
+
+def test_both_graphs_empty_does_not_raise(empty, k_params, metric):
+    result = metric.compute(empty, empty, k_params)
+    assert result.summary["relative_l2_error"] == 0.0
+    assert result.summary["k"] == 0
+
+def test_empty_reduced_graph_does_not_raise(path10, empty, k_params, metric):
+    assert metric.compute(path10, empty, k_params).summary["k"] == 0
+
+def test_empty_original_graph_does_not_raise(empty, path10, k_params, metric):
+    assert metric.compute(empty, path10, k_params).summary["k"] == 0
+
+def test_empty_graph_keeps_summary_schema(empty, path10, complete5, k_params, metric):
+    assert (
+        metric.compute(empty, empty, k_params).summary.keys()
+        == metric.compute(path10, complete5, k_params).summary.keys()
+    )
