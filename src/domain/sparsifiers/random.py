@@ -18,10 +18,10 @@ class RandomSparsifier(Sparsifier):
         seed = int(params.get("seed", 420))
 
         rng = random.Random(seed)
-        G = graph.to_networkx()
+        G = graph.to_networkx(copy=False)
 
-        H = nx.DiGraph() if graph.is_directed() else nx.Graph()
-        H.add_nodes_from(G.nodes())
+        H = nx.DiGraph() if G.is_directed() else nx.Graph()
+        H.add_nodes_from(G.nodes(data=True))
 
         kept_edges = [
             (u, v, d)
