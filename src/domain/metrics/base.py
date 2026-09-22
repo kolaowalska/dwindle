@@ -74,7 +74,11 @@ class DeltaMetric(Metric):
             g_val = g_summary[key]
             h_val = h_summary.get(key)
 
-            if isinstance(g_val, (int, float)) and isinstance(h_val, (int, float)):
+            numeric = (int, float)
+            if (
+                isinstance(g_val, numeric) and not isinstance(g_val, bool)
+                and isinstance(h_val, numeric) and not isinstance(h_val, bool)
+            ):
                 delta_summary[f"{key}_original"] = g_val
                 delta_summary[f"{key}_reduced"] = h_val
                 delta_summary[f"{key}_delta"] = h_val - g_val

@@ -42,3 +42,23 @@ def test_non_numeric_fields_are_passed_through():
     assert "label" in result.summary
     assert result.summary["label"] == "hello"
     assert "score_delta" in result.summary
+
+def test_boolean_fields_are_not_subtracted():
+    """bool subclasses int, so `weighted` used to produce a nonsense delta row."""
+    import networkx as nx
+    from src.domain.graph_model import Graph, RunParams
+    from src.domain.metrics.base import Metric, MetricInfo
+
+    class _FlagMetric(Metric):
+        INFO = MetricInfo(name="flag_metric")
+        def compute(self, graph, params):
+            return MetricResult(metric="flag_metric", summary={"weighted": True, "score": 2.0})
+
+    dm = DeltaMetric(_FlagMetric())
+    g = Graph.from_networkx(nx.path_graph(3), name="g")
+    h = Graph.from_networkx(nx.path_graph(3), name="h")
+    summary = dm.compute_delta(g, h, RunParams({})).summary
+
+    assert "weighted_delta" not in summary
+    assert summary["weighted"] is True
+    assert summary["score_delta"] == pytest.approx(0.0)
