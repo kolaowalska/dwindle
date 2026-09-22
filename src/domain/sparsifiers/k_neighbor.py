@@ -16,6 +16,10 @@ class KNeighborSparsifier(Sparsifier):
     def run(self, graph: Graph, params: RunParams) -> Graph:
         rho = float(params.get("rho", 0.5))
         seed = int(params.get("seed", 420))
+
+        if not (0.0 <= rho <= 1.0):
+            raise ValueError(f"rho must be in [0, 1], got {rho}")
+
         rng = np.random.default_rng(seed)
 
         G = graph.to_networkx(copy=False)

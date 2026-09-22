@@ -15,6 +15,9 @@ class LocalDegreeSparsifier(Sparsifier):
     def run(self, graph: Graph, params: RunParams) -> Graph:
         rho = float(params.get("rho", 0.5))
 
+        if not (0.0 <= rho <= 1.0):
+            raise ValueError(f"rho must be in [0, 1], got {rho}")
+
         G = graph.to_networkx(copy=False)
         H = nx.DiGraph() if G.is_directed() else nx.Graph()
         H.add_nodes_from(G.nodes(data=True))

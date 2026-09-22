@@ -66,3 +66,18 @@ def test_metadata_contains_rho(complete5, sparsifier):
 def test_execute_injects_execution_time(complete5, no_params, sparsifier):
     result = sparsifier.execute(complete5, no_params)
     assert "execution_time" in result.metadata
+
+@pytest.mark.parametrize("bad", [-0.5, 1.5])
+def test_rho_out_of_range_raises(sparsifier, complete5, bad):
+    with pytest.raises(ValueError, match="rho"):
+        sparsifier.run(complete5, RunParams({"rho": bad}))
+
+def test_rho_zero_still_allowed(sparsifier, complete5):
+    assert sparsifier.run(complete5, RunParams({"rho": 0.0})).edge_count >= 0
+
+def test_isolated_node_does_not_crash(sparsifier):
+    import networkx as nx
+    from src.domain.graph_model import Graph
+    g = nx.Graph([(1, 2)])
+    g.add_node(99)
+    assert sparsifier.run(Graph.from_networkx(g, name="iso"), RunParams({"rho": 0.5})).node_count == 3
