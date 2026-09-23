@@ -69,3 +69,19 @@ def test_experiment_repo_overwrite_on_same_run_id():
     repo.save(e1)
     repo.save(e2)
     assert repo.get(e1.run_id) is e2
+
+def test_graph_repository_delete_removes_entry(path10):
+    repo = InMemoryGraphRepository()
+    repo.save(path10)
+    repo.delete("path10")
+    assert repo.get("path10") is None
+
+def test_graph_repository_delete_missing_key_is_noop():
+    InMemoryGraphRepository().delete("nothing-here")
+
+def test_experiment_repository_delete_removes_entry():
+    repo = InMemoryExperimentRepository()
+    exp = Experiment()
+    repo.save(exp)
+    repo.delete(exp.run_id)
+    assert repo.get(exp.run_id) is None

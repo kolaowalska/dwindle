@@ -17,6 +17,9 @@ class InMemoryGraphRepository(GraphRepository):
     def list_names(self) -> List[str]:
         return sorted(list(self._storage.keys()))
 
+    def delete(self, name: str) -> None:
+        self._storage.pop(name, None)
+
 
 class InMemoryExperimentRepository(ExperimentRepository):
     def __init__(self):
@@ -27,3 +30,6 @@ class InMemoryExperimentRepository(ExperimentRepository):
 
     def get(self, run_id: RunID) -> Optional[Experiment]:
         return self._storage.get(run_id)
+
+    def delete(self, run_id: RunID) -> None:
+        self._storage.pop(run_id, None)

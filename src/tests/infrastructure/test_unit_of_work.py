@@ -90,3 +90,57 @@ def test_register_graph_and_experiment_together(path10, repos):
     uow.commit()
     assert graph_repo.get("path10") is path10
     assert exp_repo.get(exp.run_id) is exp
+
+
+class _FailingExperimentRepo(InMemoryExperimentRepository):
+    def save(self, experiment):
+        raise RuntimeError("storage is down")
+
+
+def test_failed_commit_undoes_earlier_writes(path10, repos):
+    graph_repo, _ = repos
+    uow = UnitOfWork(graph_repo, _FailingExperimentRepo())
+    uow.register_new_graph(path10)
+    uow.register_new_experiment(Experiment())
+
+    with pytest.raises(RuntimeError):
+        uow.commit()
+
+    assert graph_repo.get("path10") is None
+    assert uow.committed is False
+    assert uow.rolled_back is True
+
+def test_failed_commit_restores_an_overwritten_value(path10, repos):
+    import networkx as nx
+    from src.domain.graph_model import Graph
+
+    graph_repo, _ = repos
+    original = Graph.from_networkx(nx.complete_graph(3), name="path10")
+    graph_repo.save(original)
+
+    uow = UnitOfWork(graph_repo, _FailingExperimentRepo())
+    uow.register_new_graph(path10)
+    uow.register_new_experiment(Experiment())
+
+    with pytest.raises(RuntimeError):
+        uow.commit()
+
+    assert graph_repo.get("path10") is original
+
+def test_rollback_discards_pending_work(path10, repos):
+    graph_repo, exp_repo = repos
+    uow = UnitOfWork(graph_repo, exp_repo)
+    uow.register_new_graph(path10)
+    uow.rollback()
+    uow.commit()
+    assert graph_repo.get("path10") is None
+
+def test_context_manager_marks_rollback_on_exception(path10, repos):
+    graph_repo, exp_repo = repos
+    uow = UnitOfWork(graph_repo, exp_repo)
+    with pytest.raises(RuntimeError):
+        with uow:
+            uow.register_new_graph(path10)
+            raise RuntimeError("intentional failure")
+    assert uow.rolled_back is True
+    assert graph_repo.get("path10") is None

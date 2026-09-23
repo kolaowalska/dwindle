@@ -30,6 +30,8 @@ class GraphTransform(ABC):
     INFO: TransformInfo
 
     def execute(self, graph: Graph, params: RunParams) -> Graph:
+        self._check_supported(graph)
+
         if graph.node_count == 0:
             log.warning(f"[{self.__class__.__name__}] no nodes found")
 
@@ -45,6 +47,18 @@ class GraphTransform(ABC):
 
         log.info(f"[{self.__class__.__name__}] finished in {duration:.5f}s")
         return result_graph
+
+    def _check_supported(self, graph: Graph) -> None:
+        info = getattr(self, "INFO", None)
+        if info is None:
+            raise AttributeError(
+                f"{self.__class__.__name__} must declare INFO = TransformInfo(...)"
+            )
+
+        if graph.is_directed() and not info.supports_directed:
+            raise ValueError(f"'{info.name}' does not support directed graphs")
+        if graph.is_weighted() and not info.supports_weighted:
+            raise ValueError(f"'{info.name}' does not support weighted graphs")
 
     @abstractmethod
     def run(self, graph: Graph, params: RunParams) -> Graph:

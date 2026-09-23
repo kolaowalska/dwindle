@@ -93,3 +93,55 @@ def test_run_csv_output_has_header(tmp_path):
     with open(output) as f:
         header = f.readline()
     assert "metric" in header or "graph" in header
+
+
+# --- csv schema parity ---
+
+def _header(path):
+    return path.read_text().splitlines()[0]
+
+def test_run_and_batch_csv_share_a_header(tmp_path):
+    edgefile = tmp_path / "g.edgelist"
+    edgefile.write_text("0 1\n1 2\n2 3\n")
+    run_csv = tmp_path / "run.csv"
+    batch_csv = tmp_path / "batch.csv"
+
+    main(["run", "--graph", str(edgefile), "--algorithm", "identity_stub",
+          "--metrics", "edge_density", "--output", str(run_csv)])
+    main(["batch", "--dir", str(tmp_path), "--algorithm", "identity_stub",
+          "--metrics", "edge_density", "--output", str(batch_csv)])
+
+    assert _header(run_csv) == _header(batch_csv)
+
+def test_run_csv_carries_topology_columns(tmp_path):
+    edgefile = tmp_path / "g.edgelist"
+    edgefile.write_text("0 1\n1 2\n2 3\n")
+    out = tmp_path / "run.csv"
+    main(["run", "--graph", str(edgefile), "--algorithm", "identity_stub",
+          "--metrics", "edge_density", "--output", str(out)])
+    assert "nodes_before" in _header(out)
+
+
+# --- logging ---
+
+def test_verbose_flag_lowers_log_level(tmp_path):
+    import logging
+    edgefile = tmp_path / "g.edgelist"
+    edgefile.write_text("0 1\n1 2\n")
+    try:
+        main(["-v", "run", "--graph", str(edgefile), "--algorithm", "identity_stub"])
+        assert logging.getLogger().level == logging.INFO
+        main(["-vv", "run", "--graph", str(edgefile), "--algorithm", "identity_stub"])
+        assert logging.getLogger().level == logging.DEBUG
+    finally:
+        logging.getLogger().setLevel(logging.WARNING)
+
+def test_default_verbosity_is_quiet(tmp_path):
+    import logging
+    edgefile = tmp_path / "g.edgelist"
+    edgefile.write_text("0 1\n1 2\n")
+    try:
+        main(["run", "--graph", str(edgefile), "--algorithm", "identity_stub"])
+        assert logging.getLogger().level == logging.WARNING
+    finally:
+        logging.getLogger().setLevel(logging.WARNING)

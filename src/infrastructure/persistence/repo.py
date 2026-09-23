@@ -22,6 +22,10 @@ class GraphRepository(ABC):
     def list_names(self) -> List[str]:
         pass
 
+    @abstractmethod
+    def delete(self, name: str) -> None:
+        pass
+
 
 class ExperimentRepository(ABC):
     """
@@ -33,4 +37,8 @@ class ExperimentRepository(ABC):
 
     @abstractmethod
     def get(self, run_id: RunID) -> Optional[Experiment]:
+        pass
+
+    @abstractmethod
+    def delete(self, run_id: RunID) -> None:
         pass

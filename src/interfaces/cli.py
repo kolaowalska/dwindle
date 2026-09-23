@@ -3,12 +3,13 @@ from __future__ import annotations
 import argparse
 import csv
 import json
+import logging
 import sys
 from pathlib import Path
 from typing import Optional
 
 _GRAPH_EXTENSIONS = {".graphml", ".gexf", ".gml", ".adjlist", ".edgelist", ".txt", ".edges", ".csv"}
-_BATCH_FIELDNAMES = ["graph", "algorithm", "nodes_before", "edges_before", "nodes_after", "edges_after", "metric", "key", "value"]
+_CSV_FIELDNAMES = ["graph", "algorithm", "nodes_before", "edges_before", "nodes_after", "edges_after", "metric", "key", "value"]
 
 from src.interfaces.api import ExperimentFacade
 from src.domain.sparsifiers.registry import SparsifierRegistry
@@ -43,6 +44,30 @@ def _fmt(v) -> str:
     return str(v)
 
 
+def _configure_logging(verbosity: int) -> None:
+    level = {0: logging.WARNING, 1: logging.INFO}.get(verbosity, logging.DEBUG)
+    logging.basicConfig(level=level, format="%(levelname)s  %(name)s: %(message)s")
+    logging.getLogger().setLevel(level)
+
+
+def _result_rows(data: dict) -> list[dict]:
+    base = {
+        "graph": data["graph_name"],
+        "algorithm": data["algorithm_name"],
+        "nodes_before": data["nodes_before"],
+        "edges_before": data["edges_before"],
+        "nodes_after": data["nodes_after"],
+        "edges_after": data["edges_after"],
+    }
+    if not data["metric_results"]:
+        return [{**base, "metric": "", "key": "", "value": ""}]
+    return [
+        {**base, "metric": m["metric"], "key": k, "value": v}
+        for m in data["metric_results"]
+        for k, v in m["summary"].items()
+    ]
+
+
 def _print_result(data: dict, output: Optional[str]) -> None:
     if output is None:
         print(f"\n{data['graph_name']}  →  {data['algorithm_name']}")
@@ -56,21 +81,10 @@ def _print_result(data: dict, output: Optional[str]) -> None:
         return
 
     if output.endswith(".csv"):
-        rows = [
-            {
-                "graph": data["graph_name"],
-                "algorithm": data["algorithm_name"],
-                "metric": m["metric"],
-                "key": k,
-                "value": v,
-            }
-            for m in data["metric_results"]
-            for k, v in m["summary"].items()
-        ]
         with open(output, "w", newline="") as f:
-            writer = csv.DictWriter(f, fieldnames=["graph", "algorithm", "metric", "key", "value"])
+            writer = csv.DictWriter(f, fieldnames=_CSV_FIELDNAMES)
             writer.writeheader()
-            writer.writerows(rows)
+            writer.writerows(_result_rows(data))
     else:
         with open(output, "w") as f:
             json.dump(data, f, indent=2, default=str)
@@ -185,28 +199,14 @@ def cmd_batch(args) -> int:
             continue
 
         data = run_resp["data"]
-        base = {
-            "graph": data["graph_name"],
-            "algorithm": data["algorithm_name"],
-            "nodes_before": data["nodes_before"],
-            "edges_before": data["edges_before"],
-            "nodes_after": data["nodes_after"],
-            "edges_after": data["edges_after"],
-        }
-
-        if data["metric_results"]:
-            for m in data["metric_results"]:
-                for k, v in m["summary"].items():
-                    rows.append({**base, "metric": m["metric"], "key": k, "value": v})
-        else:
-            rows.append({**base, "metric": "", "key": "", "value": ""})
+        rows.extend(_result_rows(data))
 
         reduction = 100 * (1 - data["edges_after"] / data["edges_before"]) if data["edges_before"] else 0
         print(f"  OK    {path.name}  edges {data['edges_before']} → {data['edges_after']} ({reduction:.1f}% reduction)")
         ok += 1
 
     with open(output_path, "w", newline="") as f:
-        writer = csv.DictWriter(f, fieldnames=_BATCH_FIELDNAMES)
+        writer = csv.DictWriter(f, fieldnames=_CSV_FIELDNAMES)
         writer.writeheader()
         writer.writerows(rows)
 
@@ -222,6 +222,10 @@ def run_cli(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--plugin", metavar="FILE", action="append", default=[],
         help="load a plugin module before registry discovery (repeatable)",
+    )
+    parser.add_argument(
+        "-v", "--verbose", action="count", default=0,
+        help="show log output (-v for info, -vv for debug)",
     )
     sub = parser.add_subparsers(dest="command")
 
@@ -256,6 +260,7 @@ def run_cli(argv: list[str] | None = None) -> int:
     sub.add_parser("smoke", help="run a quick smoke test")
 
     args = parser.parse_args(argv)
+    _configure_logging(args.verbose)
 
     for plugin_path in args.plugin:
         try:

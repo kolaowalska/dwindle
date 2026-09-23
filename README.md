@@ -71,6 +71,7 @@ dwindle run --graph <path> --algorithm <name> [options]
   - `--directed` — treat the graph as directed (default: undirected)
   - `--weighted` — treat the third column in the edgelist as edge weights (default: unweighted)
   - `--plugin` — path to a python file to import before registry discovery; can be repeated to load multiple plugins (see [extending via plugins](#extending-via-plugins))
+  - `-v` / `-vv` — show log output; `-v` for info (graph loading, per-phase timings), `-vv` for debug. a global flag, so it goes before the subcommand
 
 #### batch experiments
 to run one algorithm across an entire directory of graphs and collect results into a single csv:
@@ -89,6 +90,8 @@ dwindle batch --dir <directory> --algorithm <name> --output <file.csv> [options]
   - `--pattern` — filename glob to filter which files inside the directory are processed (default: all recognised extensions)
   - `--recursive` — recurse into subdirectories
   - `--directed` / `--weighted` — applied uniformly to all graphs
+
+both `run --output <file>.csv` and `batch` write the same nine columns, so results from separate runs can be concatenated directly.
 
 ### examples
 
