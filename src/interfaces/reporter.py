@@ -11,23 +11,15 @@ ROW_LABEL_WIDTH = 32
 _METRIC_ABBREV = {
     "diameter":                 "diameter",
     "average path length":      "avg-path",
+    "average stretch":          "avg-stretch",
+    "all pairs shortest paths": "apsp",
     "degree distribution":      "deg-dist",
     "connectivity":             "connect",
-    "global efficiency":        "glob-eff",
     "clustering":               "cluster",
     "community preservation":   "community",
+    "edge density":             "edge-dens",
     "effective resistance":     "eff-res",
-    "degree assortativity":     "assort",
     "spectral similarity":      "spectral",
-    "diameter delta":               "diameter",
-    "average path length delta":    "avg-path",
-    "degree distribution delta":    "deg-dist",
-    "connectivity delta":           "connect",
-    "global efficiency delta":      "glob-eff",
-    "clustering delta":             "cluster",
-    "community preservation delta": "community",
-    "effective resistance delta":   "eff-res",
-    "degree assortativity delta":   "assort",
 }
 
 _KEY_ABBREV = {
@@ -35,6 +27,9 @@ _KEY_ABBREV = {
     "component_nodes":              "cc-n",
     "total_nodes":                  "tot-n",
     "avg":                          "avg",
+    "avg_path":                     "avg-path",
+    "max_path":                     "max-path",
+    "n_pairs":                      "n-pairs",
     "weighted":                     "wtd",
     "max_degree":                   "max-deg",
     "min_degree":                   "min-deg",
@@ -48,30 +43,12 @@ _KEY_ABBREV = {
     "n_communities":                "n-comm",
     "kirchhoff_index":              "kirchhoff",
     "density":                      "density",
-    "assortativity":                "assort",
     "relative_l2_error":            "l2-err",
     "fiedler_G":                    "fiedler-G",
     "fiedler_H":                    "fiedler-H",
     "fiedler_ratio":                "fiedl-ratio",
     "k":                            "k",
 }
-
-
-def _abbrev_algo(label: str, algorithm: str, registry_get) -> str:
-    """
-    try to get the abbrev from the sparsifier's INFO.
-    falls back to the label string if the registry call fails.
-    """
-    try:
-        transform = registry_get(algorithm)
-        abbrev = transform.INFO.abbrev
-        # import re
-        # match = re.search(r"\((.*?)\)", label)
-        # hint = match.group(1).replace("rho=", "ρ=") if match else ""
-        # return f"{abbrev} {hint}".strip()
-        return f"{abbrev}".strip()
-    except Exception:
-        return label[:COL_WIDTH - 1]
 
 
 _SUFFIX_MARKERS = (("_original", "orig"), ("_reduced", "redu"), ("_delta", "Δ"))
@@ -90,7 +67,6 @@ _BOLD   = "\033[1m"
 _DIM    = "\033[2m"
 _RED    = "\033[91m"
 _GREEN  = "\033[92m"
-_YELLOW = "\033[93m"
 _CYAN   = "\033[96m"
 _WHITE  = "\033[97m"
 

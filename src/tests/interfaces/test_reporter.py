@@ -101,3 +101,18 @@ def test_strip_ansi_removes_codes():
     assert _strip_ansi("\033[91mred\033[0m") == "red"
     assert _strip_ansi("\033[1m\033[92mgreen\033[0m") == "green"
     assert _strip_ansi("plain") == "plain"
+
+def _registered_metric_names():
+    from src.domain.metrics.registry import MetricRegistry
+    MetricRegistry.discover()
+    return {MetricRegistry.get(n).INFO.name for n in MetricRegistry.list()}
+
+def test_every_metric_has_an_abbreviation():
+    from src.interfaces.reporter import _METRIC_ABBREV
+    missing = _registered_metric_names() - set(_METRIC_ABBREV)
+    assert not missing, f"no abbreviation for: {sorted(missing)}"
+
+def test_abbreviation_table_has_no_dead_entries():
+    from src.interfaces.reporter import _METRIC_ABBREV
+    dead = set(_METRIC_ABBREV) - _registered_metric_names()
+    assert not dead, f"abbreviations for metrics that no longer exist: {sorted(dead)}"
