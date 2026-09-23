@@ -54,49 +54,13 @@ _KEY_ABBREV = {
     "fiedler_H":                    "fiedler-H",
     "fiedler_ratio":                "fiedl-ratio",
     "k":                            "k",
-    "diameter_delta":               "diam Δ",
-    "diameter_original":            "diam orig",
-    "diameter_reduced":             "diam redu",
-    "fiedler_delta":                "fiedler Δ",
-    "fiedler_original":             "fiedler orig",
-    "fiedler_reduced":              "fiedler redu",
-    "avg_delta":                    "avg Δ",
-    "avg_original":                 "avg orig",
-    "avg_reduced":                  "avg redu",
-    "modularity_delta":             "modul Δ",
-    "modularity_original":          "modul orig",
-    "modularity_reduced":           "modul redu",
-    "n_communities_delta":          "n-comm Δ",
-    "n_communities_original":       "n-comm orig",
-    "n_communities_reduced":        "n-comm redu",
-    "n_components_delta":           "n-comp Δ",
-    "n_components_original":        "n-comp orig",
-    "n_components_reduced":         "n-comp redu",
-    "largest_component_ratio_delta":    "lcc-ratio Δ",
-    "largest_component_ratio_original": "lcc-ratio orig",
-    "largest_component_ratio_reduced":  "lcc-ratio redu",
-    "avg_clustering_delta":         "avg-clust Δ",
-    "avg_clustering_original":      "avg-clust orig",
-    "avg_clustering_reduced":       "avg-clust redu",
-    "transitivity_delta":           "transit Δ",
-    "transitivity_original":        "transit orig",
-    "transitivity_reduced":         "transit redu",
-    "max_degree_delta":             "max-deg Δ",
-    "max_degree_original":          "max-deg orig",
-    "max_degree_reduced":           "max-deg redu",
-    "min_degree_delta":             "min-deg Δ",
-    "min_degree_original":          "min-deg orig",
-    "min_degree_reduced":           "min-deg redu",
-    "unique_degrees_delta":         "uniq-deg Δ",
-    "unique_degrees_original":      "uniq-deg orig",
-    "unique_degrees_reduced":       "uniq-deg redu",
 }
 
 
 def _abbrev_algo(label: str, algorithm: str, registry_get) -> str:
     """
-    Try to get the abbrev from the sparsifier's INFO.
-    Falls back to the label string if the registry call fails.
+    try to get the abbrev from the sparsifier's INFO.
+    falls back to the label string if the registry call fails.
     """
     try:
         transform = registry_get(algorithm)
@@ -110,10 +74,16 @@ def _abbrev_algo(label: str, algorithm: str, registry_get) -> str:
         return label[:COL_WIDTH - 1]
 
 
+_SUFFIX_MARKERS = (("_original", "orig"), ("_reduced", "redu"), ("_delta", "Δ"))
+
+
 def _abbrev_row(metric_name: str, key: str) -> str:
     m = _METRIC_ABBREV.get(metric_name, metric_name[:10])
-    k = _KEY_ABBREV.get(key, key[:10])
-    return f"{m} / {k}"
+    for suffix, marker in _SUFFIX_MARKERS:
+        if key.endswith(suffix):
+            base = key[: -len(suffix)]
+            return f"{m} / {_KEY_ABBREV.get(base, base[:10])} {marker}"
+    return f"{m} / {_KEY_ABBREV.get(key, key[:10])}"
 
 _RESET  = "\033[0m"
 _BOLD   = "\033[1m"
@@ -140,7 +110,6 @@ class ScenarioRecord:
     nodes_after: int
     edges_after: int
     metrics: dict[str, dict[str, Any]]
-    deltas: dict[str, dict[str, Any]]
     error: str | None = None
 
 
@@ -173,7 +142,6 @@ class Reporter:
         _print_header("EXPERIMENT REPORT")
         _print_topology_table(self.records, columns, resolve)
         _print_metrics_table(self.records, columns, resolve)
-        _print_deltas_table(self.records, columns, resolve)
 
 
 # ── table helpers ─────────────────────────────────────────────────────────────
@@ -268,21 +236,19 @@ def _print_topology_table(
     _print_table(rows, col_headers, cells)
 
 
-# ── absolute metrics table ────────────────────────────────────────────────────
+# ── metrics comparison table ──────────────────────────────────────────────────
 
 def _print_metrics_table(
     records: list[ScenarioRecord],
     columns: list[tuple[str, str]],
     resolve: callable,
 ) -> None:
-    _print_section("METRICS ON SPARSIFIED GRAPH (H)")
+    _print_section(f"METRICS (G → H)  ·  {_c('green', _GREEN)} = increase  ·  {_c('red', _RED)} = decrease")
     col_headers = [resolve(label, algo) for label, algo in columns]
     metric_keys: list[tuple[str, str]] = []
     seen: set = set()
     for r in records:
         for metric_name, summary in r.metrics.items():
-            if metric_name in ("spectral_similarity", "spectral similarity"):
-                continue
             for key in summary:
                 if key == "execution_time":
                     continue
@@ -296,38 +262,6 @@ def _print_metrics_table(
         row_cells = []
         for r in records:
             val = r.metrics.get(metric_name, {}).get(key, "—")
-            row_cells.append(_fmt(val))
-        cells.append(row_cells)
-    _print_table(rows, col_headers, cells)
-
-
-# ── deltas table ──────────────────────────────────────────────────────────────
-
-def _print_deltas_table(
-    records: list[ScenarioRecord],
-    columns: list[tuple[str, str]],
-    resolve: callable,
-) -> None:
-    _print_section(f"DELTAS (H vs G)  ·  {_c('green', _GREEN)} = increase  ·  {_c('red', _RED)} = decrease")
-    col_headers = [resolve(label, algo) for label, algo in columns]
-    delta_keys: list[tuple[str, str]] = []
-    seen: set = set()
-    for r in records:
-        for metric_name, summary in r.deltas.items():
-            for key in summary:
-                pair = (metric_name, key)
-                if pair not in seen:
-                    delta_keys.append(pair)
-                    seen.add(pair)
-    rows = [_abbrev_row(m, k) for m, k in delta_keys]
-    cells = []
-    for metric_name, key in delta_keys:
-        row_cells = []
-        for r in records:
-            val = r.deltas.get(metric_name, {}).get(key, "—")
-            is_delta = key.endswith("_delta") or metric_name in (
-                "spectral similarity", "spectral_similarity"
-            )
-            row_cells.append(_fmt(val, is_delta=is_delta))
+            row_cells.append(_fmt(val, is_delta=key.endswith("_delta")))
         cells.append(row_cells)
     _print_table(rows, col_headers, cells)

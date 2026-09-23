@@ -13,7 +13,6 @@ def facade():
 
 
 def _upload_memory(facade, g, name):
-    # kind="memory", value passed via "path" key (facade passes request_json["path"] as value)
     return facade.upload_graph({"kind": "memory", "path": g, "name": name})
 
 
@@ -29,7 +28,6 @@ def test_upload_graph_stores_in_service(facade):
     assert "p5" in facade.service.list_graphs()
 
 def test_upload_graph_missing_payload_raises(facade):
-    # "path" key is accessed outside the try/except → propagates KeyError
     with pytest.raises(KeyError):
         facade.upload_graph({})
 

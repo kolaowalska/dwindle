@@ -8,7 +8,7 @@ from src.domain.graph_model import Graph, RunParams
 from src.domain.experiment import Experiment
 from src.domain.sparsifiers.registry import SparsifierRegistry
 from src.domain.metrics.registry import MetricRegistry
-from src.domain.metrics.base import MetricResult, RelativeMetric
+from src.domain.metrics.base import MetricResult, RelativeMetric, DeltaMetric
 
 from src.infrastructure.graph_gateway import GraphGateway, GraphSource
 from src.infrastructure.persistence.repo import GraphRepository, ExperimentRepository
@@ -93,29 +93,34 @@ class ExperimentService:
 
     def compute_metrics(
         self,
-        graph: Graph,
+        original: Graph,
+        reduced: Graph,
         metric_names: list[str],
+        params: Optional[Dict[str, Any]] = None,
     ) -> list[MetricResult]:
+        """
+        measures each metric on both graphs. absolute metrics are wrapped in a
+        DeltaMetric, relative ones already take a pair.
+        """
         MetricRegistry.discover()
+        run_params = RunParams(params or {})
         results = []
 
         for name in metric_names:
             metric = MetricRegistry.get(name)
-            if isinstance(metric, RelativeMetric):
-                raise ValueError(
-                    f"metric '{name}' is a relative metric and requires two graphs; "
-                    f"it cannot be used via the CLI. use it programmatically via DeltaMetric or the demo."
-                )
+
             start = time.perf_counter()
-            result = metric.compute(graph, RunParams({}))
+            if isinstance(metric, RelativeMetric):
+                result = metric.compute(original, reduced, run_params)
+            else:
+                result = DeltaMetric(metric).compute_delta(original, reduced, run_params)
             duration = time.perf_counter() - start
 
-            updated_result = MetricResult(
-                metric=result.metric,
+            results.append(MetricResult(
+                metric=metric.INFO.name,
                 summary={**result.summary, "execution_time": duration},
-                artifacts=result.artifacts
-            )
-            results.append(updated_result)
+                artifacts=result.artifacts,
+            ))
 
         return results
 
@@ -135,6 +140,7 @@ class ExperimentService:
         # 0. start UOW
         uow = UnitOfWork(self.graph_repo, self.experiment_repo)
         run_params = params or {}
+        original_graph = self.get_graph(graph_key)
 
         with uow:
             # 1. discovery
@@ -150,8 +156,8 @@ class ExperimentService:
                 all_algos = sorted(SparsifierRegistry.list() + TransformRegistry.list())
                 raise KeyError(f"algorithm '{algorithm_name}' not found. available: {all_algos}")
 
-            # 3. compute metrics
-            metric_results = self.compute_metrics(h, metric_names)
+            # 3. compute metrics on both graphs
+            metric_results = self.compute_metrics(original_graph, h, metric_names, run_params)
 
             # 4. create experiment entity (domain object)
             experiment = Experiment()
@@ -165,8 +171,6 @@ class ExperimentService:
             uow.register_new_experiment(experiment)
 
         # 6. return DTO for UI/console
-        original_graph = self.get_graph(graph_key)
-
         return ExperimentDTO(
             graph_name=graph_key,
             reduced_graph_key=h.name,

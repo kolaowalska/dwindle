@@ -66,8 +66,9 @@ class DeltaMetric(Metric):
         """
         two-graph call - computes the before and after diff
         """
-        g_summary = self.base_metric.compute(g, params).summary
-        h_summary = self.base_metric.compute(h, params).summary
+        g_result = self.base_metric.compute(g, params)
+        h_result = self.base_metric.compute(h, params)
+        g_summary, h_summary = g_result.summary, h_result.summary
 
         delta_summary: dict[str, float | int | str] = {}
         for key in g_summary.keys():
@@ -87,5 +88,6 @@ class DeltaMetric(Metric):
 
         return MetricResult(
             metric=self.INFO.name,
-            summary=delta_summary
+            summary=delta_summary,
+            artifacts=h_result.artifacts,
         )

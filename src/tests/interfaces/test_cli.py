@@ -145,3 +145,32 @@ def test_default_verbosity_is_quiet(tmp_path):
         assert logging.getLogger().level == logging.WARNING
     finally:
         logging.getLogger().setLevel(logging.WARNING)
+
+
+# --- before/after output ---
+
+def test_run_prints_before_and_after(tmp_path, capsys):
+    import re
+    edgefile = tmp_path / "g.edgelist"
+    edgefile.write_text("0 1\n1 2\n2 3\n3 4\n4 0\n")
+    main(["run", "--graph", str(edgefile), "--algorithm", "random",
+          "--params", "p=0.5", "seed=1", "--metrics", "edge_density"])
+    out = capsys.readouterr().out
+    assert re.search(r"density\s+\S+ → \S+ \([-+]\S+\)", out)
+
+def test_run_csv_carries_delta_keys(tmp_path):
+    edgefile = tmp_path / "g.edgelist"
+    edgefile.write_text("0 1\n1 2\n2 3\n3 4\n4 0\n")
+    out = tmp_path / "r.csv"
+    main(["run", "--graph", str(edgefile), "--algorithm", "random",
+          "--params", "p=0.5", "seed=1", "--metrics", "edge_density", "--output", str(out)])
+    body = out.read_text()
+    assert "density_original" in body
+    assert "density_reduced" in body
+    assert "density_delta" in body
+
+def test_relative_metric_is_accepted(tmp_path):
+    edgefile = tmp_path / "g.edgelist"
+    edgefile.write_text("0 1\n1 2\n2 3\n3 4\n4 0\n")
+    assert main(["run", "--graph", str(edgefile), "--algorithm", "identity_stub",
+                 "--metrics", "spectral_similarity"]) == 0

@@ -65,7 +65,7 @@ dwindle run --graph <path> --algorithm <name> [options]
   - `--algorithm` — name of the reduction algorithm to apply (from `list-algorithms`)
   
 **optional:**
-  - `--metrics` — comma-separated list of metrics to compute, e.g. `diameter, clustering, community_preservation`
+  - `--metrics` — comma-separated list of metrics to compute, e.g. `diameter, clustering, community_preservation`. every metric is measured on both the original and the reduced graph, so results are reported as `original → reduced (delta)`; this means each metric runs twice
   - `--params` — algorithm parameters, either as space-separated `key=value` pairs or a single json object
   - `--output` — write results to a file instead of printing; supports `.json` and `.csv`
   - `--directed` — treat the graph as directed (default: undirected)
