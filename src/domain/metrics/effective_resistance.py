@@ -20,6 +20,12 @@ class EffectiveResistance(Metric):
         g = graph.to_networkx(copy=False)
         ug = g.to_undirected() if g.is_directed() else g
 
+        if ug.number_of_nodes() == 0:
+            return MetricResult(
+                metric=self.INFO.name,
+                summary={"kirchhoff_index": 0.0, "component_nodes": 0},
+            )
+
         lcc = ug.subgraph(max(nx.connected_components(ug), key=len))
         n = lcc.number_of_nodes()
 

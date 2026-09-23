@@ -52,6 +52,18 @@ class SpectralSimilarity(RelativeMetric):
         if h_undirected.is_directed():
             h_undirected = h_undirected.to_undirected()
 
+        if g_undirected.number_of_nodes() == 0 or h_undirected.number_of_nodes() == 0:
+            return MetricResult(
+                metric=self.INFO.name,
+                summary={
+                    "relative_l2_error": 0.0,
+                    "fiedler_G": 0.0,
+                    "fiedler_H": 0.0,
+                    "fiedler_ratio": 0.0,
+                    "k": 0,
+                },
+            )
+
         lcc_g = g_undirected.subgraph(max(nx.connected_components(g_undirected), key=len))
         lcc_h = h_undirected.subgraph(max(nx.connected_components(h_undirected), key=len))
 
