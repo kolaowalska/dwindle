@@ -4,7 +4,7 @@ import json
 import pytest
 
 from src.main import main
-from src.interfaces.cli import _parse_params
+from src.interfaces.cli import _parse_params, _CSV_FIELDNAMES
 
 
 # --- smoke / help ---
@@ -174,3 +174,86 @@ def test_relative_metric_is_accepted(tmp_path):
     edgefile.write_text("0 1\n1 2\n2 3\n3 4\n4 0\n")
     assert main(["run", "--graph", str(edgefile), "--algorithm", "identity_stub",
                  "--metrics", "spectral_similarity"]) == 0
+
+
+# --- persistence & history ---
+
+def _corpus(tmp_path):
+    d = tmp_path / "corpus"
+    d.mkdir()
+    (d / "a.edgelist").write_text("0 1\n1 2\n2 3\n3 0\n")
+    (d / "b.edgelist").write_text("0 1\n1 2\n2 0\n")
+    return d
+
+def test_run_records_the_run_to_the_store(tmp_path):
+    from src.infrastructure.persistence.json_store import JsonExperimentRepository
+    store = tmp_path / "store"
+    g = tmp_path / "g.edgelist"
+    g.write_text("0 1\n1 2\n2 3\n")
+    main(["run", "--graph", str(g), "--algorithm", "identity_stub",
+          "--metrics", "edge_density", "--store", str(store)])
+    assert len(JsonExperimentRepository(store).list_all()) == 1
+
+def test_no_store_writes_nothing(tmp_path):
+    store = tmp_path / "store"
+    g = tmp_path / "g.edgelist"
+    g.write_text("0 1\n1 2\n2 3\n")
+    main(["run", "--graph", str(g), "--algorithm", "identity_stub",
+          "--store", str(store), "--no-store"])
+    assert not store.exists()
+
+def test_batch_records_one_run_per_graph(tmp_path):
+    from src.infrastructure.persistence.json_store import JsonExperimentRepository
+    store = tmp_path / "store"
+    main(["batch", "--dir", str(_corpus(tmp_path)), "--algorithm", "identity_stub",
+          "--store", str(store), "--output", str(tmp_path / "o.csv")])
+    assert len(JsonExperimentRepository(store).list_all()) == 2
+
+def test_successive_batches_accumulate(tmp_path):
+    from src.infrastructure.persistence.json_store import JsonExperimentRepository
+    store, corpus = tmp_path / "store", _corpus(tmp_path)
+    for algo in ("identity_stub", "random"):
+        main(["batch", "--dir", str(corpus), "--algorithm", algo,
+              "--store", str(store), "--output", str(tmp_path / f"{algo}.csv")])
+    runs = JsonExperimentRepository(store).list_all()
+    assert len(runs) == 4
+    assert {r.algorithm for r in runs} == {"identity_stub", "random"}
+
+def test_stored_run_carries_transform_timing(tmp_path):
+    from src.infrastructure.persistence.json_store import JsonExperimentRepository
+    store = tmp_path / "store"
+    main(["batch", "--dir", str(_corpus(tmp_path)), "--algorithm", "identity_stub",
+          "--store", str(store), "--output", str(tmp_path / "o.csv")])
+    assert all(r.transform_seconds is not None for r in JsonExperimentRepository(store).list_all())
+
+def test_history_lists_recorded_runs(tmp_path, capsys):
+    store = tmp_path / "store"
+    main(["batch", "--dir", str(_corpus(tmp_path)), "--algorithm", "identity_stub",
+          "--store", str(store), "--output", str(tmp_path / "o.csv")])
+    capsys.readouterr()
+    assert main(["history", "--store", str(store)]) == 0
+    out = capsys.readouterr().out
+    assert "identity_stub" in out
+    assert "2 run(s)" in out
+
+def test_history_on_empty_store_is_not_an_error(tmp_path, capsys):
+    assert main(["history", "--store", str(tmp_path / "empty")]) == 0
+    assert "no runs recorded" in capsys.readouterr().out
+
+def test_history_exports_every_run_to_one_csv(tmp_path):
+    store = tmp_path / "store"
+    main(["batch", "--dir", str(_corpus(tmp_path)), "--algorithm", "identity_stub",
+          "--metrics", "edge_density", "--store", str(store), "--output", str(tmp_path / "o.csv")])
+    export = tmp_path / "all.csv"
+    main(["history", "--store", str(store), "--output", str(export)])
+    body = export.read_text().splitlines()
+    assert body[0] == ",".join(_CSV_FIELDNAMES)
+    assert len(body) > 1
+
+def test_batch_and_history_csv_share_a_header(tmp_path):
+    store = tmp_path / "store"
+    batch_csv, export = tmp_path / "b.csv", tmp_path / "h.csv"
+    main(["batch", "--dir", str(_corpus(tmp_path)), "--algorithm", "identity_stub",
+          "--metrics", "edge_density", "--store", str(store), "--output", str(batch_csv)])
+    main(["history", "--store", str(store), "--output", str(export)])
+    assert _header(batch_csv) == _header(export)

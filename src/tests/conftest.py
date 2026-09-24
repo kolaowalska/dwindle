@@ -51,3 +51,9 @@ def service():
 @pytest.fixture
 def no_params():
     return RunParams({})
+
+
+@pytest.fixture(autouse=True)
+def isolated_store(tmp_path, monkeypatch):
+    """keep every test's run store out of the working tree"""
+    monkeypatch.setenv("DWINDLE_STORE", str(tmp_path / "store"))

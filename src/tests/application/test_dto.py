@@ -12,6 +12,7 @@ def sample_dto():
     return ExperimentDTO(
         graph_name="g",
         reduced_graph_key="g_identity_stub",
+        run_id="run-1",
         nodes_before=10,
         edges_before=9,
         nodes_after=10,
@@ -52,7 +53,7 @@ def test_dto_metric_results_summary_accessible(sample_dto):
 
 def test_dto_empty_metric_results():
     dto = ExperimentDTO(
-        graph_name="g", reduced_graph_key="g_r",
+        graph_name="g", reduced_graph_key="g_r", run_id="run-2",
         nodes_before=5, edges_before=4,
         nodes_after=5, edges_after=4,
         algorithm_name="identity_stub",
@@ -73,7 +74,7 @@ def test_node_reduction_computable(sample_dto):
 
 def test_zero_edges_before_construction_does_not_raise():
     dto = ExperimentDTO(
-        graph_name="empty", reduced_graph_key="empty_r",
+        graph_name="empty", reduced_graph_key="empty_r", run_id="run-3",
         nodes_before=5, edges_before=0,
         nodes_after=5, edges_after=0,
         algorithm_name="identity_stub",

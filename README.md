@@ -71,6 +71,7 @@ dwindle run --graph <path> --algorithm <name> [options]
   - `--directed` — treat the graph as directed (default: undirected)
   - `--weighted` — treat the third column in the edgelist as edge weights (default: unweighted)
   - `--plugin` — path to a python file to import before registry discovery; can be repeated to load multiple plugins (see [extending via plugins](#extending-via-plugins))
+  - `--store` / `--no-store` — where to record the run, or skip recording (see [the run store](#the-run-store))
   - `-v` / `-vv` — show log output; `-v` for info (graph loading, per-phase timings), `-vv` for debug. a global flag, so it goes before the subcommand
 
 #### batch experiments
@@ -90,8 +91,31 @@ dwindle batch --dir <directory> --algorithm <name> --output <file.csv> [options]
   - `--pattern` — filename glob to filter which files inside the directory are processed (default: all recognised extensions)
   - `--recursive` — recurse into subdirectories
   - `--directed` / `--weighted` — applied uniformly to all graphs
+  - `--store` / `--no-store` — where to record the runs, or skip recording (see [the run store](#the-run-store))
 
 both `run --output <file>.csv` and `batch` write the same nine columns, so results from separate runs can be concatenated directly.
+
+### the run store
+every `run` and `batch` records what it did, so results accumulate across invocations instead of vanishing when the process exits. each run is one json file holding the graph, algorithm, params, topology before and after, metric results, and both timings (the transform's own wall clock and the whole run's).
+
+the store lives in `.dwindle/` by default; override it with `--store DIR` or the `DWINDLE_STORE` environment variable, and skip recording entirely with `--no-store`.
+
+~~~shell
+dwindle history                          # what has been run so far
+dwindle history --output all_runs.csv    # every recorded run as one csv
+~~~
+
+`history --output` writes the same columns as `run --output` and `batch`, so a corpus sweep and its history export concatenate directly. this is the intended benchmarking loop: point `batch` at a directory of graphs, repeat for each algorithm, then export everything as one table.
+
+~~~shell
+for algo in random k_neighbor local_degree merw; do
+  dwindle batch --dir ./corpus --algorithm "$algo" --params rho=0.5 \
+    --metrics clustering,edge_density --output "/dev/null"
+done
+dwindle history --output benchmark.csv
+~~~
+
+no database is involved for now. `JsonExperimentRepository` implements the same `ExperimentRepository` interface as the in-memory stub to allow for a clean migration to sqlite or postgres in the future.
 
 ### examples
 

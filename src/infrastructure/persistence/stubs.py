@@ -33,3 +33,6 @@ class InMemoryExperimentRepository(ExperimentRepository):
 
     def delete(self, run_id: RunID) -> None:
         self._storage.pop(run_id, None)
+
+    def list_all(self) -> List[Experiment]:
+        return sorted(self._storage.values(), key=lambda e: e.created_at)

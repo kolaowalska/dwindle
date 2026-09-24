@@ -5,15 +5,23 @@ from typing import Dict, Any
 from src.application.experiment_service import ExperimentService
 from src.infrastructure.graph_gateway import GraphSource
 from src.infrastructure.persistence.stubs import InMemoryGraphRepository, InMemoryExperimentRepository
+from src.infrastructure.persistence.json_store import JsonExperimentRepository
 
 
 class ExperimentFacade:
     """
     [REMOTE FACADE] provides a coarse interface for interacting with experiments
     """
-    def __init__(self):
+    def __init__(self, store=None, experiment_repo=None):
         self.graph_repo = InMemoryGraphRepository()
-        self.experiment_repo = InMemoryExperimentRepository()
+
+        if experiment_repo is not None:
+            self.experiment_repo = experiment_repo
+        elif store is not None:
+            self.experiment_repo = JsonExperimentRepository(store)
+        else:
+            self.experiment_repo = InMemoryExperimentRepository()
+
         self._service = ExperimentService(self.graph_repo, self.experiment_repo)
 
     def upload_graph(self, request_json: Dict[str, Any]) -> Dict[str, Any]:

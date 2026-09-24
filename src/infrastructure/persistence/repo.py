@@ -42,3 +42,7 @@ class ExperimentRepository(ABC):
     @abstractmethod
     def delete(self, run_id: RunID) -> None:
         pass
+
+    @abstractmethod
+    def list_all(self) -> List[Experiment]:
+        pass

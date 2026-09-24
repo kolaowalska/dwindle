@@ -28,6 +28,7 @@ htmlcov/
 .settings/
 
 results/*.png
+.dwindle/
 
 dist/
 build/
