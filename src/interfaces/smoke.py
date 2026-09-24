@@ -41,9 +41,7 @@ def run_smoke() -> None:
         # 4. handling metrics
         print("metrics:")
         for m in report.metric_results:
-            # TODO: format the summary dict for display
             summary_str = ", ".join([f"{k} = {v}" for k, v in m.summary.items()])
-            # TODO: implement saving to .csv file or something
             print(f"  - {m.metric}: {summary_str}")
 
         print("--- SUCCESS ---")
