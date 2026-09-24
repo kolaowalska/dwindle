@@ -14,8 +14,12 @@ def record():
         edges_before=9,
         nodes_after=10,
         edges_after=9,
-        metrics={"diameter": {"diameter": 9.0, "execution_time": 0.001}},
-        deltas={"diameter": {"diameter_delta": 0.0}},
+        metrics={"diameter": {
+            "diameter_original": 9.0,
+            "diameter_reduced": 9.0,
+            "diameter_delta": 0.0,
+            "execution_time": 0.001,
+        }},
     )
 
 @pytest.fixture
@@ -35,7 +39,6 @@ def test_scenario_record_fields_accessible(record):
     assert record.nodes_after == 10
     assert record.edges_after == 9
     assert isinstance(record.metrics, dict)
-    assert isinstance(record.deltas, dict)
 
 def test_scenario_record_error_defaults_to_none(record):
     assert record.error is None
@@ -51,12 +54,12 @@ def test_reporter_multiple_records():
     rec1 = ScenarioRecord(
         label="a", algorithm="identity_stub",
         nodes_before=5, edges_before=4, nodes_after=5, edges_after=4,
-        metrics={}, deltas={},
+        metrics={},
     )
     rec2 = ScenarioRecord(
         label="b", algorithm="random",
         nodes_before=5, edges_before=4, nodes_after=5, edges_after=2,
-        metrics={}, deltas={},
+        metrics={},
     )
     r.add(rec1)
     r.add(rec2)
@@ -67,18 +70,16 @@ def test_reporter_multiple_records():
 
 def test_print_report_does_not_raise(reporter, capsys):
     reporter.print_report()
-    capsys.readouterr()  # no assertion needed — just must not raise
+    capsys.readouterr() 
 
 def test_print_report_includes_algorithm_abbrev(reporter, capsys):
     reporter.print_report()
     out = capsys.readouterr().out
-    # identity_stub INFO.abbrev is "id"
     assert "id" in out
 
 def test_print_report_includes_metric_name(reporter, capsys):
     reporter.print_report()
     out = capsys.readouterr().out
-    # "diameter" or its abbreviation "diam" should appear
     assert "diam" in out or "diameter" in out
 
 def test_print_report_empty_reporter(capsys):
@@ -100,3 +101,18 @@ def test_strip_ansi_removes_codes():
     assert _strip_ansi("\033[91mred\033[0m") == "red"
     assert _strip_ansi("\033[1m\033[92mgreen\033[0m") == "green"
     assert _strip_ansi("plain") == "plain"
+
+def _registered_metric_names():
+    from src.domain.metrics.registry import MetricRegistry
+    MetricRegistry.discover()
+    return {MetricRegistry.get(n).INFO.name for n in MetricRegistry.list()}
+
+def test_every_metric_has_an_abbreviation():
+    from src.interfaces.reporter import _METRIC_ABBREV
+    missing = _registered_metric_names() - set(_METRIC_ABBREV)
+    assert not missing, f"no abbreviation for: {sorted(missing)}"
+
+def test_abbreviation_table_has_no_dead_entries():
+    from src.interfaces.reporter import _METRIC_ABBREV
+    dead = set(_METRIC_ABBREV) - _registered_metric_names()
+    assert not dead, f"abbreviations for metrics that no longer exist: {sorted(dead)}"

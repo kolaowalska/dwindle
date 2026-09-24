@@ -37,8 +37,7 @@ def test_pipeline():
     result = dto.metric_results[0]
 
     assert result.metric == "diameter"
-    assert "diameter" in result.summary
 
-    val = result.summary["diameter"]
-    assert isinstance(val, (int, float))
-    assert val == 9
+    assert result.summary["diameter_original"] == 9
+    assert result.summary["diameter_reduced"] == 9
+    assert result.summary["diameter_delta"] == 0

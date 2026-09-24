@@ -7,9 +7,6 @@ sys.path.append(os.getcwd())
 
 from src.interfaces.api import ExperimentFacade
 from src.interfaces.reporter import Reporter, ScenarioRecord
-from src.domain.metrics.base import DeltaMetric
-from src.domain.metrics.registry import MetricRegistry
-from src.domain.graph_model import RunParams
 
 try:
     from src.interfaces.visualizer import save_comparison_plot
@@ -29,10 +26,7 @@ METRICS = [
     "connectivity",
     "clustering",
     "community_preservation",
-]
-
-RELATIVE_METRICS = [
-    "spectral_similarity"
+    "spectral_similarity",
 ]
 
 SCENARIOS = [
@@ -69,13 +63,6 @@ SCENARIOS = [
 ]
 
 # -------------------------------------------------------------------------
-
-
-def _format_summary(summary: dict) -> str:
-    parts = []
-    for k, v in summary.items():
-        parts.append(f"{k} = {v:.4f}" if isinstance(v, float) else f"{k} = {v}")
-    return ", ".join(parts)
 
 
 def _separator():
@@ -118,43 +105,6 @@ def _run_scenario(api: ExperimentFacade, graph_key: str, scenario: dict) -> dict
     return result["data"]
 
 
-def _print_scenario_results(data: dict):
-    print(f" • nodes: {data['nodes_before']} → {data['nodes_after']}")
-    print(f" • edges: {data['edges_before']} → {data['edges_after']}")
-    print(f" • metrics:")
-    for m in data.get("metric_results", []):
-        print(f"    - {m['metric']}: {_format_summary(m['summary'])}")
-
-
-def _compute_deltas(
-    api: ExperimentFacade,
-    graph_key: str,
-    reduced_graph_key: str,
-    params: dict,
-) -> dict[str, dict]:
-    """fetches both graphs and runs DeltaMetric for each registered metric."""
-    repo = api.graph_repo
-    G = repo.get(graph_key)
-    H = repo.get(reduced_graph_key)
-    run_params = RunParams(values=params)
-
-    results: dict[str, dict] = {}
-    # print(f" • deltas:")
-    for name in METRICS + RELATIVE_METRICS:
-        try:
-            metric = MetricRegistry.get(name)
-            if metric.INFO.type == "relative":
-                result = metric.compute(G, H, run_params)
-            else:
-                result = DeltaMetric(metric).compute_delta(G, H, run_params)
-            # print(f"    - {result.metric}: {_format_summary(result.summary)}")
-            results[result.metric] = dict(result.summary)  # ← collect
-        except Exception as e:
-            print(f"    - {name}: error ({e})")
-
-    return results
-
-
 def _run_visualizations(api: ExperimentFacade, graph_key: str):
     repo = api.service.graph_repo
     G = repo.get(graph_key).to_networkx()
@@ -191,26 +141,15 @@ def main():
                 algorithm=scenario["algorithm"],
                 nodes_before=0, edges_before=0,
                 nodes_after=0, edges_after=0,
-                metrics={}, deltas={},
+                metrics={},
                 error="run_job failed",
             ))
             continue
-
-        # _print_scenario_results(data)
 
         metrics_by_name = {
             m["metric"]: m["summary"]
             for m in data.get("metric_results", [])
         }
-
-        deltas_by_name: dict = {}
-        reduced_key = data.get("reduced_graph_key")
-        if reduced_key:
-            deltas_by_name = _compute_deltas(
-                api, graph_key, reduced_key, scenario["params"]
-            )
-        else:
-            print(" • deltas: skipped (no reduced_graph_key in response)")
 
         reporter.add(ScenarioRecord(
             label=scenario["label"],
@@ -220,7 +159,6 @@ def main():
             nodes_after=data["nodes_after"],
             edges_after=data["edges_after"],
             metrics=metrics_by_name,
-            deltas=deltas_by_name,
         ))
 
     # ── summary report ────────────────────────────────────────────────────────

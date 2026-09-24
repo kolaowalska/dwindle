@@ -99,14 +99,14 @@ def test_run_transform_reduces_nodes(service):
 def test_compute_metrics_returns_results_for_each_name(service):
     key = _import(service, nx.path_graph(10), "p10")
     graph = service.get_graph(key)
-    results = service.compute_metrics(graph, ["diameter"])
+    results = service.compute_metrics(graph, graph, ["diameter"])
     assert len(results) == 1
     assert results[0].metric == "diameter"
 
 def test_compute_metrics_multiple_names(service):
     key = _import(service, nx.path_graph(10), "p10")
     graph = service.get_graph(key)
-    results = service.compute_metrics(graph, ["diameter", "clustering"])
+    results = service.compute_metrics(graph, graph, ["diameter", "clustering"])
     assert len(results) == 2
     names = {r.metric for r in results}
     assert "diameter" in names
@@ -115,19 +115,61 @@ def test_compute_metrics_multiple_names(service):
 def test_compute_metrics_injects_execution_time(service):
     key = _import(service, nx.path_graph(10), "p10")
     graph = service.get_graph(key)
-    results = service.compute_metrics(graph, ["diameter"])
+    results = service.compute_metrics(graph, graph, ["diameter"])
     assert "execution_time" in results[0].summary
 
 def test_compute_metrics_unknown_metric_raises(service):
     key = _import(service, nx.path_graph(10), "p10")
     graph = service.get_graph(key)
     with pytest.raises(KeyError):
-        service.compute_metrics(graph, ["not_a_metric"])
+        service.compute_metrics(graph, graph, ["not_a_metric"])
 
 def test_compute_metrics_empty_list_returns_empty(service):
     key = _import(service, nx.path_graph(10), "p10")
     graph = service.get_graph(key)
-    assert service.compute_metrics(graph, []) == []
+    assert service.compute_metrics(graph, graph, []) == []
+
+
+# --- before/after comparison ---
+
+def test_compute_metrics_reports_original_reduced_and_delta(service):
+    original = service.get_graph(_import(service, nx.path_graph(10), "p10"))
+    reduced = service.get_graph(_import(service, nx.path_graph(4), "p4"))
+    summary = service.compute_metrics(original, reduced, ["diameter"])[0].summary
+    assert summary["diameter_original"] == 9
+    assert summary["diameter_reduced"] == 3
+    assert summary["diameter_delta"] == -6
+
+def test_compute_metrics_identical_graphs_give_zero_delta(service):
+    graph = service.get_graph(_import(service, nx.path_graph(10), "p10"))
+    summary = service.compute_metrics(graph, graph, ["diameter"])[0].summary
+    assert summary["diameter_delta"] == 0
+
+def test_compute_metrics_accepts_relative_metrics(service):
+    original = service.get_graph(_import(service, nx.complete_graph(6), "k6"))
+    reduced = service.get_graph(_import(service, nx.path_graph(6), "p6"))
+    summary = service.compute_metrics(original, reduced, ["spectral_similarity"])[0].summary
+    assert summary["relative_l2_error"] > 0.0
+
+def test_compute_metrics_keeps_artifacts_from_the_reduced_graph(service):
+    original = service.get_graph(_import(service, nx.path_graph(10), "p10"))
+    reduced = service.get_graph(_import(service, nx.path_graph(4), "p4"))
+    result = service.compute_metrics(original, reduced, ["degree_distribution"])[0]
+    assert "distribution" in result.artifacts
+
+def test_run_experiment_dto_carries_before_and_after(service):
+    key = _import(service, nx.path_graph(10), "p10")
+    dto = service.run_experiment(key, "identity_stub", ["diameter"])
+    summary = dto.metric_results[0].summary
+    assert summary["diameter_original"] == 9
+    assert summary["diameter_reduced"] == 9
+
+def test_run_experiment_measures_a_real_reduction(service):
+    key = _import(service, nx.complete_graph(12), "k12")
+    dto = service.run_experiment(key, "random", ["edge_density"], {"p": 0.3, "seed": 7})
+    summary = dto.metric_results[0].summary
+    assert summary["density_reduced"] < summary["density_original"]
+    assert summary["density_delta"] < 0
 
 
 # --- run_experiment ---

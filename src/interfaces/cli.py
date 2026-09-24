@@ -44,6 +44,36 @@ def _fmt(v) -> str:
     return str(v)
 
 
+def _fmt_signed(v) -> str:
+    if isinstance(v, bool):
+        return str(v)
+    if isinstance(v, float):
+        return f"{v:+.4g}"
+    if isinstance(v, int):
+        return f"{v:+d}"
+    return str(v)
+
+
+def _delta_rows(summary: dict) -> list[tuple[str, str]]:
+    rows = []
+    paired = set()
+
+    for key in summary:
+        if not key.endswith("_original"):
+            continue
+        base = key[: -len("_original")]
+        reduced, delta = f"{base}_reduced", f"{base}_delta"
+        if reduced in summary and delta in summary:
+            rows.append((base, f"{_fmt(summary[key])} → {_fmt(summary[reduced])} ({_fmt_signed(summary[delta])})"))
+            paired.update({key, reduced, delta})
+
+    for key, value in summary.items():
+        if key not in paired and key != "execution_time":
+            rows.append((key, _fmt(value)))
+
+    return rows
+
+
 def _configure_logging(verbosity: int) -> None:
     level = {0: logging.WARNING, 1: logging.INFO}.get(verbosity, logging.DEBUG)
     logging.basicConfig(level=level, format="%(levelname)s  %(name)s: %(message)s")
@@ -76,8 +106,14 @@ def _print_result(data: dict, output: Optional[str]) -> None:
         if data["metric_results"]:
             print("  metrics:")
             for m in data["metric_results"]:
-                vals = "  ".join(f"{k}={_fmt(v)}" for k, v in m["summary"].items())
-                print(f"    {m['metric']}: {vals}")
+                rows = _delta_rows(m["summary"])
+                if not rows:
+                    continue
+                width = max(len(label) for label, _ in rows)
+                head = f"{m['metric']}: "
+                for i, (label, rendered) in enumerate(rows):
+                    prefix = head if i == 0 else " " * len(head)
+                    print(f"    {prefix}{label:<{width}}  {rendered}")
         return
 
     if output.endswith(".csv"):
