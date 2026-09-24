@@ -30,7 +30,7 @@ class LocalDegreeSparsifier(Sparsifier):
         for v in G.nodes():
             neighbors = list(G.neighbors(v))
             d_v = len(neighbors)
-            k_v = int(math.floor(d_v ** rho))
+            k_v = math.floor(d_v ** rho)
 
             if k_v > 0: # sorting neighbors by their degree descending
                 neighbors_sorted = sorted(

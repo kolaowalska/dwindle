@@ -4,10 +4,8 @@ import networkx as nx
 import pytest
 
 from src.application.dto import ExperimentDTO
-from src.application.experiment_service import ExperimentService
 from src.domain.graph_model import Graph
 from src.infrastructure.graph_gateway import GraphSource
-from src.infrastructure.persistence.stubs import InMemoryGraphRepository, InMemoryExperimentRepository
 
 
 def _import(service, g, name):

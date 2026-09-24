@@ -12,7 +12,8 @@ class APSPMetric(Metric):
     INFO = MetricInfo(
         name="all pairs shortest paths",
         type="absolute",
-        description="summary statistics (avg, max path length, reachable pairs) from APSP on the largest connected component"
+        description=("summary statistics (avg, max path length, reachable pairs) "
+                     "from APSP on the largest connected component")
     )
 
     def compute(self, graph: Graph, params: RunParams) -> MetricResult:

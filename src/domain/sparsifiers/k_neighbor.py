@@ -31,19 +31,19 @@ class KNeighborSparsifier(Sparsifier):
             d_v = len(neighbors)
 
             # k_v = max(1, floor(d_v ^ rho))
-            k_v = max(1, int(math.floor(d_v ** rho)))
+            k_v = max(1, math.floor(d_v ** rho))
 
             if d_v <= k_v:
                 for u in neighbors:
                     data = G.get_edge_data(v, u)
                     H.add_edge(v, u, **data)
             else:
-                weights = []
+                raw_weights = []
                 for u in neighbors:
                     w = G.get_edge_data(v, u).get("weight", 1.0)
-                    weights.append(w)
+                    raw_weights.append(w)
 
-                weights = np.array(weights, dtype=float)
+                weights = np.array(raw_weights, dtype=float)
                 total_w = weights.sum()
 
                 if total_w > 0:

@@ -15,7 +15,7 @@ def _dominant_eigenvector(A, n: int) -> np.ndarray:
     """
     if n < 500:
         dense = A.toarray()
-        eigenvalues, eigenvectors = np.linalg.eigh(dense)
+        _, eigenvectors = np.linalg.eigh(dense)
         v = np.abs(eigenvectors[:, -1])
     else:
         try:

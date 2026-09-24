@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
-from typing import Any, Mapping, MutableMapping, Optional, Dict, Iterable, Tuple, NewType, Callable
+from typing import Any, Mapping, Optional, Dict, Iterable, Tuple, NewType, Callable
 import uuid
 import networkx as nx
 import numpy as np
@@ -45,7 +45,15 @@ class OperationDescriptor:
 
 class Graph:
     __slots__ = (
-        "_nx", "_loader", "id", "name", "directed", "weighted", "source", "metadata", "_spectral_cache"
+        "_loader",
+        "_nx",
+        "_spectral_cache",
+        "directed",
+        "id",
+        "metadata",
+        "name",
+        "source",
+        "weighted"
     )
 
     def __init__(
@@ -54,7 +62,7 @@ class Graph:
         id: GraphID,
         name: Optional[str] = None,
         source: Optional[str] = None,
-        metadata: Optional[MutableMapping[str, Any]] = None,
+        metadata: Optional[Mapping[str, Any]] = None,
         loader: Optional[Callable[[], nx.Graph]] = None
     ):
         self._nx = nx_graph
@@ -63,7 +71,7 @@ class Graph:
         self.name: str = name or f"graph-{self.id}"
         self.source: Optional[str] = source
         self.metadata: Dict[str, Any] = dict(metadata or {})
-        self._spectral_cache = None
+        self._spectral_cache: Optional[Dict[str, Any]] = None
 
         if self._nx is not None:
             self.directed = self._nx.is_directed()
@@ -186,7 +194,7 @@ class Graph:
         )
 
     @staticmethod
-    def from_loader(name: str, loader_f: Callable[[], nx.Graph], metadata: dict = None) -> "Graph":
+    def from_loader(name: str, loader_f: Callable[[], nx.Graph], metadata: Optional[dict] = None) -> "Graph":
         """factory for [LAZY LOAD] (virtual proxy)"""
         return Graph(
             nx_graph=None,

@@ -1,7 +1,5 @@
 from __future__ import annotations
-import os
 import networkx as nx
-import pytest
 
 from src.application.experiment_service import ExperimentService
 from src.infrastructure.graph_gateway import GraphSource

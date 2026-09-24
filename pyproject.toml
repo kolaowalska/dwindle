@@ -17,7 +17,22 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=7.0"]
+dev = ["pytest>=7.0", "ruff>=0.6", "mypy>=1.11"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py39"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "B", "C4", "SIM", "RUF"]
+ignore = ["E701", "SIM108"]
+
+[tool.ruff.lint.per-file-ignores]
+"src/demo.py" = ["E402"]
+
+[tool.mypy]
+files = ["src"]
+ignore_missing_imports = true
 
 [project.scripts]
 dwindle = "src.main:main"

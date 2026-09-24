@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Mapping, Literal
+from typing import Any, Literal, Mapping
 
-from src.domain.graph_model import Graph, RunParams, ArtifactHandle
+from src.domain.graph_model import Graph, RunParams
 
 
 @dataclass(frozen=True)
@@ -19,7 +19,7 @@ class MetricResult:
     """results returned by Metric.compute()"""
     metric: str
     summary: Mapping[str, float | int | str] = field(default_factory=dict)
-    artifacts: Mapping[str, ArtifactHandle] = field(default_factory=dict)
+    artifacts: Mapping[str, Any] = field(default_factory=dict)
 
 
 class Metric(ABC):
@@ -71,7 +71,7 @@ class DeltaMetric(Metric):
         g_summary, h_summary = g_result.summary, h_result.summary
 
         delta_summary: dict[str, float | int | str] = {}
-        for key in g_summary.keys():
+        for key in g_summary:
             g_val = g_summary[key]
             h_val = h_summary.get(key)
 
