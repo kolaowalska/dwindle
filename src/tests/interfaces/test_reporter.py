@@ -70,7 +70,7 @@ def test_reporter_multiple_records():
 
 def test_print_report_does_not_raise(reporter, capsys):
     reporter.print_report()
-    capsys.readouterr() 
+    capsys.readouterr()
 
 def test_print_report_includes_algorithm_abbrev(reporter, capsys):
     reporter.print_report()

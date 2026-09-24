@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import networkx as nx
-import pytest
 
 from src.domain.graph_model import Graph
 from src.domain.experiment import Experiment

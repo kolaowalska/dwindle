@@ -8,10 +8,6 @@ import sys
 from pathlib import Path
 from typing import Optional
 
-_GRAPH_EXTENSIONS = {".graphml", ".gexf", ".gml", ".adjlist", ".edgelist", ".txt", ".edges", ".csv"}
-_CSV_FIELDNAMES = ["run_id", "graph", "algorithm", "nodes_before", "edges_before", "nodes_after",
-                   "edges_after", "transform_seconds", "metric", "key", "value"]
-
 from src.interfaces.api import ExperimentFacade
 from src.infrastructure.persistence.stubs import InMemoryExperimentRepository
 from src.infrastructure.persistence.json_store import JsonExperimentRepository, resolve_store
@@ -20,13 +16,17 @@ from src.domain.transforms.registry import TransformRegistry
 from src.domain.metrics.registry import MetricRegistry
 from src.domain.common.plugin_discovery import load_plugin_file
 
+_GRAPH_EXTENSIONS = {".graphml", ".gexf", ".gml", ".adjlist", ".edgelist", ".txt", ".edges", ".csv"}
+_CSV_FIELDNAMES = ["run_id", "graph", "algorithm", "nodes_before", "edges_before", "nodes_after",
+                   "edges_after", "transform_seconds", "metric", "key", "value"]
+
 
 def _parse_params(raw: list[str] | None) -> dict:
     if not raw:
         return {}
     if len(raw) == 1 and raw[0].strip().startswith("{"):
         return json.loads(raw[0])
-    result = {}
+    result: dict = {}
     for item in raw:
         if "=" not in item:
             raise ValueError(f"invalid param '{item}': expected KEY=VALUE format")
@@ -342,7 +342,10 @@ def run_cli(argv: list[str] | None = None) -> int:
     run_p.add_argument("--directed", action="store_true", help="treat graph as directed")
     run_p.add_argument("--weighted", action="store_true", help="treat graph as weighted")
 
-    batch_p = sub.add_parser("batch", parents=[store_opts], help="run one algorithm across a directory of graphs and produce a combined CSV")
+    batch_p = sub.add_parser(
+        "batch", parents=[store_opts],
+        help="run one algorithm across a directory of graphs and produce a combined CSV",
+    )
     batch_p.add_argument("--dir", required=True, metavar="DIR", help="directory containing graph files")
     batch_p.add_argument("--algorithm", required=True, help="algorithm name  (see: list-algorithms)")
     batch_p.add_argument("--metrics", help="comma-separated metric names  (see: list-metrics)")
@@ -350,8 +353,14 @@ def run_cli(argv: list[str] | None = None) -> int:
         "--params", nargs="*", metavar="KEY=VALUE",
         help="algorithm params as KEY=VALUE pairs or a single JSON object string",
     )
-    batch_p.add_argument("--output", default="batch_results.csv", metavar="FILE", help="output CSV path (default: batch_results.csv)")
-    batch_p.add_argument("--pattern", metavar="GLOB", help="filename glob to filter graph files (default: all recognised extensions)")
+    batch_p.add_argument(
+        "--output", default="batch_results.csv", metavar="FILE",
+        help="output CSV path (default: batch_results.csv)",
+    )
+    batch_p.add_argument(
+        "--pattern", metavar="GLOB",
+        help="filename glob to filter graph files (default: all recognised extensions)",
+    )
     batch_p.add_argument("--recursive", action="store_true", help="recurse into subdirectories")
     batch_p.add_argument("--directed", action="store_true", help="treat all graphs as directed")
     batch_p.add_argument("--weighted", action="store_true", help="treat all graphs as weighted")

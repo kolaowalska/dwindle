@@ -84,7 +84,7 @@ class MERWSparsifier(Sparsifier):
         ug = g.to_undirected() if g.is_directed() else g
 
         if not nx.is_connected(ug):
-            raise ValueError(f"merw sparsifier expects a connected graph")
+            raise ValueError("merw sparsifier expects a connected graph")
 
         nodes = list(ug.nodes())
         target_edges = int(np.floor(rho * ug.number_of_edges()))

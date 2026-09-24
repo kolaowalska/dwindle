@@ -6,7 +6,7 @@ import warnings
 import networkx as nx
 import pytest
 
-from src.domain.graph_model import Graph, RunParams, new_graph_id
+from src.domain.graph_model import Graph, RunParams
 
 
 def test_from_networkx_preserves_node_edge_count(path10):

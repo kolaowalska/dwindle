@@ -57,7 +57,7 @@ def test_execute_injects_execution_time(complete5, no_params, sparsifier):
 
 def test_node_attributes_are_preserved(sparsifier):
     import networkx as nx
-    from src.domain.graph_model import Graph, RunParams
+    from src.domain.graph_model import RunParams
     g = nx.path_graph(5)
     nx.set_node_attributes(g, {n: f"label{n}" for n in g.nodes()}, "label")
     result = sparsifier.run(Graph.from_networkx(g, name="attrs"), RunParams({"p": 1.0}))

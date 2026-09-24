@@ -1,7 +1,6 @@
 from __future__ import annotations
 import collections
 import math
-import networkx as nx
 
 from src.domain.graph_model import Graph, RunParams
 from src.domain.metrics.base import Metric, MetricInfo, MetricResult

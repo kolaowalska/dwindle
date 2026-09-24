@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Callable
 
 # ── formatting constants ──────────────────────────────────────────────────────
 
@@ -104,12 +104,7 @@ class Reporter:
             for registry in (SparsifierRegistry, TransformRegistry):
                 try:
                     transform = registry.get(algo)
-                    abbrev = transform.INFO.abbrev
-                    # import re
-                    # match = re.search(r"\((.*?)\)", label)
-                    # hint = match.group(1).replace("rho=", "ρ=") if match else ""
-                    # return f"{abbrev} {hint}".strip()
-                    return f"{abbrev}".strip()
+                    return str(transform.INFO.abbrev).strip()
                 except Exception:
                     continue
             return label[:COL_WIDTH - 1]
@@ -147,12 +142,11 @@ def _fmt(v: Any, is_delta: bool = False) -> str:
     else:
         s = str(v)
 
-    if is_delta:
-        if isinstance(v, (int, float)):
-            if v > 0:
-                return _c(s, _GREEN)
-            elif v < 0:
-                return _c(s, _RED)
+    if is_delta and isinstance(v, (int, float)):
+        if v > 0:
+            return _c(s, _GREEN)
+        if v < 0:
+            return _c(s, _RED)
     return s
 
 
@@ -189,7 +183,7 @@ def _strip_ansi(s: str) -> str:
 def _print_topology_table(
     records: list[ScenarioRecord],
     columns: list[tuple[str, str]],
-    resolve: callable,
+    resolve: Callable[[str, str], str],
 ) -> None:
     _print_section("TOPOLOGY")
     col_headers = [resolve(label, algo) for label, algo in columns]
@@ -217,7 +211,7 @@ def _print_topology_table(
 def _print_metrics_table(
     records: list[ScenarioRecord],
     columns: list[tuple[str, str]],
-    resolve: callable,
+    resolve: Callable[[str, str], str],
 ) -> None:
     _print_section(f"METRICS (G → H)  ·  {_c('green', _GREEN)} = increase  ·  {_c('red', _RED)} = decrease")
     col_headers = [resolve(label, algo) for label, algo in columns]

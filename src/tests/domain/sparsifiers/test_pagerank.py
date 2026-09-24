@@ -4,7 +4,7 @@ import pytest
 import networkx as nx
 
 from src.domain.sparsifiers.pagerank import PageRankPruning
-from src.domain.graph_model import Graph, RunParams
+from src.domain.graph_model import RunParams
 
 
 @pytest.fixture

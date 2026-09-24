@@ -138,9 +138,8 @@ def test_rollback_discards_pending_work(path10, repos):
 def test_context_manager_marks_rollback_on_exception(path10, repos):
     graph_repo, exp_repo = repos
     uow = UnitOfWork(graph_repo, exp_repo)
-    with pytest.raises(RuntimeError):
-        with uow:
-            uow.register_new_graph(path10)
-            raise RuntimeError("intentional failure")
+    with pytest.raises(RuntimeError), uow:
+        uow.register_new_graph(path10)
+        raise RuntimeError("intentional failure")
     assert uow.rolled_back is True
     assert graph_repo.get("path10") is None

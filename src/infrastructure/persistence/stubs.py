@@ -15,7 +15,7 @@ class InMemoryGraphRepository(GraphRepository):
         return self._storage.get(name)
 
     def list_names(self) -> List[str]:
-        return sorted(list(self._storage.keys()))
+        return sorted(self._storage)
 
     def delete(self, name: str) -> None:
         self._storage.pop(name, None)

@@ -47,6 +47,6 @@ def run_smoke() -> None:
         print("--- SUCCESS ---")
 
     except Exception as e:
-        print(f"\n--- SMOKE TEST FAILED ---")
+        print("\n--- SMOKE TEST FAILED ---")
         print(f"error: {e}")
         raise e
