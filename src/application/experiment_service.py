@@ -33,7 +33,6 @@ class ExperimentService:
         graph = self.gateway.load(source)
         key = graph.name
 
-        # TODO: collision logic
         if self.graph_repo.get(key) is not None:
             i = 2
             while self.graph_repo.get(f"{key}_{i}") is not None:

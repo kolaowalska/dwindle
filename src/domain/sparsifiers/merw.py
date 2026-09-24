@@ -65,10 +65,14 @@ def _score_edges(g: nx.Graph, baseline_distribution: np.ndarray, nodes: list) ->
 
 @register_sparsifier("merw")
 class MERWSparsifier(Sparsifier):
+    """
+    prunes edges by maximal-entropy random walk impact: the edge whose removal
+    shifts the MERW stationary distribution least goes first, never breaking
+    connectivity.
+    """
+
     INFO = TransformInfo(name="MERW sparsifier", abbrev="merw")
-    """
-    TODO
-    """
+
     def run(self, graph: Graph, params: RunParams) -> Graph:
         rho = float(params.get("rho", 0.5))
         rescore_interval = int(params.get("rescore_interval", 0))

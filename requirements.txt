@@ -1,5 +1,6 @@
-networkx
-numpy
-seaborn
-matplotlib
-scipy
+# pyproject.toml is the source of truth; this mirrors its runtime dependencies.
+# for a working checkout use `pip install -e .`, or `pip install -e .[dev]` to get pytest.
+networkx>=3.0
+numpy>=1.24
+scipy>=1.10
+matplotlib>=3.7

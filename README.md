@@ -190,5 +190,5 @@ dwindle --plugin ~/research/my_sparsifier.py list-algorithms
 # load several plugins at once
 dwindle --plugin ~/algo.py --plugin ~/metric.py run --graph g.edgelist --algorithm my-algo --metrics my-metric
 ~~~
-the plugin's parent directory is automatically added to `sys.path`, so any local imports inside the plugin resolve relative to its own location regardless of where `graph-reduce` is invoked from.
+the plugin's parent directory is automatically added to `sys.path`, so any local imports inside the plugin resolve relative to its own location regardless of where `dwindle` is invoked from.
 

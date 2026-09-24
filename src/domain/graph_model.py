@@ -10,8 +10,6 @@ import scipy.sparse.linalg as sla
 
 log = logging.getLogger(__name__)
 
-# VALUE OBJECTS
-
 GraphID = NewType('GraphID', str)
 RunID = NewType('RunID', str)
 ArtifactHandle = NewType('ArtifactHandle', str)
@@ -57,7 +55,6 @@ class Graph:
         name: Optional[str] = None,
         source: Optional[str] = None,
         metadata: Optional[MutableMapping[str, Any]] = None,
-        weight_attr: str = "weight",
         loader: Optional[Callable[[], nx.Graph]] = None
     ):
         self._nx = nx_graph
@@ -111,7 +108,7 @@ class Graph:
         return nx.is_weighted(self.to_networkx(copy=False))
 
     def copy(self, with_edge_attrs: bool = True) -> "Graph":
-        G = self.to_networkx(copy=True)
+        G = self.to_networkx(copy=False)
         nx_copy = G.__class__()
         nx_copy.add_nodes_from(G.nodes(data=True))
         nx_copy.add_edges_from(

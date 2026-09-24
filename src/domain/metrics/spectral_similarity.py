@@ -37,7 +37,8 @@ class SpectralSimilarity(RelativeMetric):
         name="spectral similarity",
         type="relative",
         description=(
-            "TODO"
+            "relative l2 error between the k smallest non-trivial laplacian "
+            "eigenvalues of both graphs, plus the fiedler value of each"
         ),
     )
 
