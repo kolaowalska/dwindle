@@ -9,9 +9,12 @@ from pathlib import Path
 from typing import Optional
 
 _GRAPH_EXTENSIONS = {".graphml", ".gexf", ".gml", ".adjlist", ".edgelist", ".txt", ".edges", ".csv"}
-_CSV_FIELDNAMES = ["graph", "algorithm", "nodes_before", "edges_before", "nodes_after", "edges_after", "metric", "key", "value"]
+_CSV_FIELDNAMES = ["run_id", "graph", "algorithm", "nodes_before", "edges_before", "nodes_after",
+                   "edges_after", "transform_seconds", "metric", "key", "value"]
 
 from src.interfaces.api import ExperimentFacade
+from src.infrastructure.persistence.stubs import InMemoryExperimentRepository
+from src.infrastructure.persistence.json_store import JsonExperimentRepository, resolve_store
 from src.domain.sparsifiers.registry import SparsifierRegistry
 from src.domain.transforms.registry import TransformRegistry
 from src.domain.metrics.registry import MetricRegistry
@@ -80,14 +83,40 @@ def _configure_logging(verbosity: int) -> None:
     logging.getLogger().setLevel(level)
 
 
+def _experiment_repo(args):
+    if getattr(args, "no_store", False):
+        return InMemoryExperimentRepository()
+    return JsonExperimentRepository(resolve_store(getattr(args, "store", None)))
+
+
+def _experiment_to_data(experiment) -> dict:
+    """shape a stored Experiment like a run response so it shares the csv schema"""
+    return {
+        "run_id": str(experiment.run_id),
+        "graph_name": experiment.graph_name or "",
+        "algorithm_name": experiment.algorithm or "",
+        "nodes_before": experiment.nodes_before,
+        "edges_before": experiment.edges_before,
+        "nodes_after": experiment.nodes_after,
+        "edges_after": experiment.edges_after,
+        "transform_seconds": experiment.transform_seconds,
+        "metric_results": [
+            {"metric": name, "summary": dict(result.summary)}
+            for name, result in experiment.results.items()
+        ],
+    }
+
+
 def _result_rows(data: dict) -> list[dict]:
     base = {
+        "run_id": data.get("run_id", ""),
         "graph": data["graph_name"],
         "algorithm": data["algorithm_name"],
         "nodes_before": data["nodes_before"],
         "edges_before": data["edges_before"],
         "nodes_after": data["nodes_after"],
         "edges_after": data["edges_after"],
+        "transform_seconds": data.get("transform_seconds", ""),
     }
     if not data["metric_results"]:
         return [{**base, "metric": "", "key": "", "value": ""}]
@@ -129,7 +158,7 @@ def _print_result(data: dict, output: Optional[str]) -> None:
 
 
 def cmd_run(args) -> int:
-    facade = ExperimentFacade()
+    facade = ExperimentFacade(experiment_repo=_experiment_repo(args))
 
     graph_name = Path(args.graph).stem
     try:
@@ -163,6 +192,32 @@ def cmd_run(args) -> int:
         return 1
 
     _print_result(run_resp["data"], args.output)
+    return 0
+
+
+def cmd_history(args) -> int:
+    runs = _experiment_repo(args).list_all()
+
+    if not runs:
+        print("no runs recorded yet")
+        return 0
+
+    if args.output:
+        rows = [r for e in runs for r in _result_rows(_experiment_to_data(e))]
+        with open(args.output, "w", newline="") as f:
+            writer = csv.DictWriter(f, fieldnames=_CSV_FIELDNAMES)
+            writer.writeheader()
+            writer.writerows(rows)
+        print(f"{len(runs)} run(s) written to {args.output}")
+        return 0
+
+    print(f"{'RUN':<10}{'GRAPH':<18}{'ALGORITHM':<18}{'EDGES':<16}{'TIME':>9}")
+    for e in runs:
+        edges = f"{e.edges_before} → {e.edges_after}" if e.edges_before is not None else "—"
+        secs = f"{e.transform_seconds:.4f}s" if e.transform_seconds is not None else "—"
+        print(f"{str(e.run_id)[:8]:<10}{(e.graph_name or '—')[:17]:<18}"
+              f"{(e.algorithm or '—')[:17]:<18}{edges:<16}{secs:>9}")
+    print(f"\n{len(runs)} run(s)")
     return 0
 
 
@@ -205,6 +260,7 @@ def cmd_batch(args) -> int:
         return 1
 
     output_path = Path(args.output)
+    experiment_repo = _experiment_repo(args)
     rows: list[dict] = []
     ok = 0
     failed = 0
@@ -212,7 +268,7 @@ def cmd_batch(args) -> int:
     print(f"batch: {len(files)} graph(s)  algorithm={args.algorithm}  output={output_path}")
 
     for path in files:
-        facade = ExperimentFacade()
+        facade = ExperimentFacade(experiment_repo=experiment_repo)
         graph_name = path.stem
 
         try:
@@ -263,9 +319,18 @@ def run_cli(argv: list[str] | None = None) -> int:
         "-v", "--verbose", action="count", default=0,
         help="show log output (-v for info, -vv for debug)",
     )
+    store_opts = argparse.ArgumentParser(add_help=False)
+    store_opts.add_argument(
+        "--store", metavar="DIR",
+        help=f"directory holding the run store (default: $DWINDLE_STORE or ./{'.dwindle'})",
+    )
+    store_opts.add_argument(
+        "--no-store", action="store_true", help="do not record this run to disk",
+    )
+
     sub = parser.add_subparsers(dest="command")
 
-    run_p = sub.add_parser("run", help="run a reduction experiment on a graph file")
+    run_p = sub.add_parser("run", parents=[store_opts], help="run a reduction experiment on a graph file")
     run_p.add_argument("--graph", required=True, help="path to graph file (edgelist format)")
     run_p.add_argument("--algorithm", required=True, help="algorithm name  (see: list-algorithms)")
     run_p.add_argument("--metrics", help="comma-separated metric names  (see: list-metrics)")
@@ -277,7 +342,7 @@ def run_cli(argv: list[str] | None = None) -> int:
     run_p.add_argument("--directed", action="store_true", help="treat graph as directed")
     run_p.add_argument("--weighted", action="store_true", help="treat graph as weighted")
 
-    batch_p = sub.add_parser("batch", help="run one algorithm across a directory of graphs and produce a combined CSV")
+    batch_p = sub.add_parser("batch", parents=[store_opts], help="run one algorithm across a directory of graphs and produce a combined CSV")
     batch_p.add_argument("--dir", required=True, metavar="DIR", help="directory containing graph files")
     batch_p.add_argument("--algorithm", required=True, help="algorithm name  (see: list-algorithms)")
     batch_p.add_argument("--metrics", help="comma-separated metric names  (see: list-metrics)")
@@ -290,6 +355,9 @@ def run_cli(argv: list[str] | None = None) -> int:
     batch_p.add_argument("--recursive", action="store_true", help="recurse into subdirectories")
     batch_p.add_argument("--directed", action="store_true", help="treat all graphs as directed")
     batch_p.add_argument("--weighted", action="store_true", help="treat all graphs as weighted")
+
+    history_p = sub.add_parser("history", parents=[store_opts], help="list runs recorded in the store")
+    history_p.add_argument("--output", metavar="FILE", help="export every recorded run to a combined CSV")
 
     sub.add_parser("list-algorithms", help="list available reduction algorithms")
     sub.add_parser("list-metrics", help="list available metrics")
@@ -309,6 +377,8 @@ def run_cli(argv: list[str] | None = None) -> int:
         return cmd_run(args)
     if args.command == "batch":
         return cmd_batch(args)
+    if args.command == "history":
+        return cmd_history(args)
     if args.command == "list-algorithms":
         return cmd_list_algorithms(args)
     if args.command == "list-metrics":

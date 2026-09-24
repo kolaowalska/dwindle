@@ -31,6 +31,15 @@ class Experiment:
     params: RunParams = field(default_factory=RunParams)
     status: ExperimentStatus = ExperimentStatus.PENDING
 
+    # provenance: what was run, on what, and how far it got
+    graph_name: Optional[str] = None
+    algorithm: Optional[str] = None
+    nodes_before: Optional[int] = None
+    edges_before: Optional[int] = None
+    nodes_after: Optional[int] = None
+    edges_after: Optional[int] = None
+    transform_seconds: Optional[float] = None
+
     # output
     results: Dict[str, MetricResult] = field(default_factory=dict)
     errors: List[str] = field(default_factory=list)

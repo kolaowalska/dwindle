@@ -143,6 +143,16 @@ class ExperimentService:
         original_graph = self.get_graph(graph_key)
 
         with uow:
+            # 0. open the record first so created_at marks the start of the run
+            experiment = Experiment(
+                params=RunParams(run_params),
+                graph_name=graph_key,
+                algorithm=algorithm_name,
+                nodes_before=original_graph.node_count,
+                edges_before=original_graph.edge_count,
+            )
+            experiment.start()
+
             # 1. discovery
             SparsifierRegistry.discover()
             TransformRegistry.discover()
@@ -159,9 +169,10 @@ class ExperimentService:
             # 3. compute metrics on both graphs
             metric_results = self.compute_metrics(original_graph, h, metric_names, run_params)
 
-            # 4. create experiment entity (domain object)
-            experiment = Experiment()
-            experiment.start()
+            # 4. close the record out
+            experiment.nodes_after = h.node_count
+            experiment.edges_after = h.edge_count
+            experiment.transform_seconds = h.metadata.get("execution_time")
             for m in metric_results:
                 experiment.add_result(m.metric, m)
             experiment.finish()
@@ -174,12 +185,14 @@ class ExperimentService:
         return ExperimentDTO(
             graph_name=graph_key,
             reduced_graph_key=h.name,
+            run_id=str(experiment.run_id),
             nodes_before=original_graph.node_count,
             edges_before=original_graph.edge_count,
             nodes_after=h.node_count,
             edges_after=h.edge_count,
             algorithm_name=algorithm_name,
             metric_results=metric_results,
-            metadata=h.metadata
+            metadata=h.metadata,
+            transform_seconds=experiment.transform_seconds,
         )
 
